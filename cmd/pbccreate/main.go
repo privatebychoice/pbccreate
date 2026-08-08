@@ -3,13 +3,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"go.privatebychoice.com/pbccreate/internal/buildinfo"
 	"go.privatebychoice.com/pbccreate/internal/config"
+	"go.privatebychoice.com/pbccreate/internal/store"
 )
 
 func main() {
@@ -43,15 +46,28 @@ func main() {
 	}
 }
 
-// runServe will host the loopback web UI. The HTTP server itself arrives in a
-// later slice; for now it resolves and reports configuration so the wiring can
-// be reviewed.
+// runServe will host the loopback web UI. It resolves configuration, opens the
+// SQLite store, and applies pending migrations. The HTTP server itself arrives
+// in a later slice.
 func runServe(log *slog.Logger) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return err
 	}
 	cfg.Log(log)
+
+	ctx := context.Background()
+	dbPath := filepath.Join(cfg.DataDir, "pbccreate.db")
+	db, err := store.Open(ctx, dbPath, log)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = db.Close() }()
+
+	if _, err := store.Migrate(ctx, db, store.MigrationsFS(), log); err != nil {
+		return err
+	}
+
 	log.Warn("serve: HTTP server not yet implemented (upcoming slice)")
 	return nil
 }
