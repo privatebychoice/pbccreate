@@ -1,0 +1,65 @@
+package server
+
+import (
+	"bytes"
+	"fmt"
+	"html/template"
+	"io/fs"
+	"net/http"
+)
+
+// templates holds one parsed template set per page, each combining the shared
+// base layout with that page's "content" block. Rendering per-page sets (rather
+// than one global set) keeps pages from colliding on the "content" define.
+type templates struct {
+	pages map[string]*template.Template
+}
+
+const baseLayout = "base.html.tmpl"
+
+// parseTemplates builds a set for every "*.html.tmpl" page except the base
+// layout, cloning the base into each.
+func parseTemplates(fsys fs.FS) (*templates, error) {
+	base, err := template.New(baseLayout).ParseFS(fsys, baseLayout)
+	if err != nil {
+		return nil, fmt.Errorf("parse base layout: %w", err)
+	}
+
+	names, err := fs.Glob(fsys, "*.html.tmpl")
+	if err != nil {
+		return nil, fmt.Errorf("list templates: %w", err)
+	}
+
+	set := make(map[string]*template.Template)
+	for _, name := range names {
+		if name == baseLayout {
+			continue
+		}
+		clone, err := base.Clone()
+		if err != nil {
+			return nil, fmt.Errorf("clone base for %s: %w", name, err)
+		}
+		page, err := clone.ParseFS(fsys, name)
+		if err != nil {
+			return nil, fmt.Errorf("parse page %s: %w", name, err)
+		}
+		set[name] = page
+	}
+	return &templates{pages: set}, nil
+}
+
+// render writes the named page. It buffers first so a template error yields a
+// clean 500 rather than a half-written response.
+func (t *templates) render(w http.ResponseWriter, page string, data any) error {
+	tmpl, ok := t.pages[page]
+	if !ok {
+		return fmt.Errorf("unknown page %q", page)
+	}
+	var buf bytes.Buffer
+	if err := tmpl.ExecuteTemplate(&buf, baseLayout, data); err != nil {
+		return fmt.Errorf("execute %s: %w", page, err)
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, err := buf.WriteTo(w)
+	return err
+}

@@ -1,0 +1,59 @@
+/* pbccreate base styles — self-hosted, no external resources. */
+
+:root {
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5a5a5a;
+  --accent: #0b5fff;
+  --border: #e2e2e2;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16181c;
+    --fg: #e8e8e8;
+    --muted: #a0a0a0;
+    --accent: #5b9dff;
+    --border: #2a2d33;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font: 1rem/1.5 system-ui, sans-serif;
+  color: var(--fg);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+header, footer {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+footer {
+  border-bottom: 0;
+  border-top: 1px solid var(--border);
+  margin-block-start: auto;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+main {
+  padding: 1.5rem 1rem;
+  max-width: 60rem;
+  width: 100%;
+  margin-inline: auto;
+}
+
+a { color: var(--accent); }
+.brand { font-weight: 600; text-decoration: none; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

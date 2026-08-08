@@ -7,11 +7,14 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"go.privatebychoice.com/pbccreate/internal/buildinfo"
 	"go.privatebychoice.com/pbccreate/internal/config"
+	"go.privatebychoice.com/pbccreate/internal/server"
 	"go.privatebychoice.com/pbccreate/internal/store"
 )
 
@@ -46,9 +49,8 @@ func main() {
 	}
 }
 
-// runServe will host the loopback web UI. It resolves configuration, opens the
-// SQLite store, and applies pending migrations. The HTTP server itself arrives
-// in a later slice.
+// runServe hosts the loopback web UI: it resolves configuration, opens and
+// migrates the SQLite store, then serves until interrupted (SIGINT/SIGTERM).
 func runServe(log *slog.Logger) error {
 	cfg, err := config.Load()
 	if err != nil {
@@ -56,7 +58,9 @@ func runServe(log *slog.Logger) error {
 	}
 	cfg.Log(log)
 
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	dbPath := filepath.Join(cfg.DataDir, "pbccreate.db")
 	db, err := store.Open(ctx, dbPath, log)
 	if err != nil {
@@ -68,8 +72,11 @@ func runServe(log *slog.Logger) error {
 		return err
 	}
 
-	log.Warn("serve: HTTP server not yet implemented (upcoming slice)")
-	return nil
+	srv, err := server.New(cfg, db, log)
+	if err != nil {
+		return err
+	}
+	return srv.Run(ctx)
 }
 
 // runScaffold will create DaVinci Resolve project folders (docs/SPEC.md §8.1).
