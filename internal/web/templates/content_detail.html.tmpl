@@ -37,5 +37,59 @@
   </form>
 </section>
 
+<section aria-labelledby="outline-heading">
+  <h2 id="outline-heading">Outline / Layout</h2>
+  <p class="muted">Total target: {{duration .OutlineTotalSeconds}}</p>
+
+  {{if .Segments}}
+  <ol class="outline">
+    {{range .Segments}}
+    <li>
+      <div class="seg-head">
+        <strong>{{.Title}}</strong>
+        <span class="muted">start ~{{duration .StartSeconds}} · target {{if .TargetSeconds}}{{duration .TargetSeconds}}{{else}}—{{end}}</span>
+      </div>
+      {{if .Notes}}<p class="muted seg-notes">{{.Notes}}</p>{{end}}
+      <div class="card-actions">
+        <form method="post" action="/content/{{$.Item.ID}}/outline/{{.ID}}/move">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <input type="hidden" name="dir" value="up">
+          <button type="submit" aria-label="Move '{{.Title}}' up">↑</button>
+        </form>
+        <form method="post" action="/content/{{$.Item.ID}}/outline/{{.ID}}/move">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <input type="hidden" name="dir" value="down">
+          <button type="submit" aria-label="Move '{{.Title}}' down">↓</button>
+        </form>
+        <form method="post" action="/content/{{$.Item.ID}}/outline/{{.ID}}/delete">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <button type="submit" aria-label="Delete '{{.Title}}'">Delete</button>
+        </form>
+      </div>
+    </li>
+    {{end}}
+  </ol>
+  {{else}}
+  <p>No segments yet. Add the first one below.</p>
+  {{end}}
+
+  <form method="post" action="/content/{{.Item.ID}}/outline" class="stack">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <p>
+      <label for="seg-title">Segment title</label>
+      <input id="seg-title" name="title" required maxlength="200" autocomplete="off">
+    </p>
+    <p>
+      <label for="seg-notes">Notes</label>
+      <textarea id="seg-notes" name="notes" rows="2" autocomplete="off"></textarea>
+    </p>
+    <p>
+      <label for="seg-target">Target seconds</label>
+      <input id="seg-target" name="target_seconds" type="number" min="0" max="86400" value="0">
+    </p>
+    <p><button type="submit">Add segment</button></p>
+  </form>
+</section>
+
 <p class="muted">Shot lists, thumbnails, and more attach here in later slices.</p>
 {{end}}

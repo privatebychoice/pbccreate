@@ -53,6 +53,9 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /content/{id}", s.handleContentDetail)
 	mux.HandleFunc("POST /content/{id}/status", s.handleContentStatus)
 	mux.HandleFunc("POST /content/{id}/script", s.handleContentScriptSave)
+	mux.HandleFunc("POST /content/{id}/outline", s.handleOutlineAdd)
+	mux.HandleFunc("POST /content/{id}/outline/{segID}/delete", s.handleOutlineDelete)
+	mux.HandleFunc("POST /content/{id}/outline/{segID}/move", s.handleOutlineMove)
 	// Middleware order: security headers outermost, then CSRF/same-origin.
 	return s.securityHeaders(s.csrf(mux))
 }

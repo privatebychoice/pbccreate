@@ -136,13 +136,23 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	segments, err := store.ListOutlineSegments(r.Context(), s.db, item.ID)
+	if err != nil {
+		s.log.Error("list outline segments", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	rows, total := buildOutline(segments)
+
 	data := map[string]any{
-		"Title":     item.Title,
-		"Build":     buildinfo.Build,
-		"CSRFToken": csrfToken(r),
-		"Item":      item,
-		"Statuses":  store.ContentStatuses,
-		"Script":    script,
+		"Title":               item.Title,
+		"Build":               buildinfo.Build,
+		"CSRFToken":           csrfToken(r),
+		"Item":                item,
+		"Statuses":            store.ContentStatuses,
+		"Script":              script,
+		"Segments":            rows,
+		"OutlineTotalSeconds": total,
 	}
 	if err := s.tmpl.render(w, http.StatusOK, "content_detail.html.tmpl", data); err != nil {
 		s.log.Error("render content detail", "err", err)
@@ -175,18 +185,8 @@ func (s *Server) handleContentStatus(w http.ResponseWriter, r *http.Request) {
 // handleContentScriptSave upserts the script for a content item and returns to
 // the item detail page.
 func (s *Server) handleContentScriptSave(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	// Ensure the item exists so a bad id yields 404 rather than a FK error.
-	if _, err := store.GetContentItem(r.Context(), s.db, id); errors.Is(err, store.ErrContentItemNotFound) {
-		http.NotFound(w, r)
-		return
-	} else if err != nil {
-		s.log.Error("get content item", "err", err, "id", id)
-		http.Error(w, "internal error", http.StatusInternalServerError)
+	id, ok := s.requireContentItem(w, r)
+	if !ok {
 		return
 	}
 
@@ -197,6 +197,109 @@ func (s *Server) handleContentScriptSave(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	http.Redirect(w, r, "/content/"+strconv.FormatInt(id, 10), http.StatusSeeOther)
+}
+
+// outlineRow decorates a segment with its cumulative start offset for display.
+type outlineRow struct {
+	store.OutlineSegment
+	StartSeconds int
+}
+
+// buildOutline computes each segment's cumulative start offset and the total
+// target duration.
+func buildOutline(segs []store.OutlineSegment) (rows []outlineRow, total int) {
+	start := 0
+	for _, s := range segs {
+		rows = append(rows, outlineRow{OutlineSegment: s, StartSeconds: start})
+		start += s.TargetSeconds
+	}
+	return rows, start
+}
+
+// handleOutlineAdd appends a segment to a content item's outline.
+func (s *Server) handleOutlineAdd(w http.ResponseWriter, r *http.Request) {
+	id, ok := s.requireContentItem(w, r)
+	if !ok {
+		return
+	}
+	target, _ := strconv.Atoi(r.PostFormValue("target_seconds"))
+	_, err := store.AddOutlineSegment(r.Context(), s.db, id, r.PostFormValue("title"), r.PostFormValue("notes"), target)
+	switch {
+	case err == nil, errors.Is(err, store.ErrInvalidSegment):
+		// On invalid input (empty title, normally blocked client-side) just
+		// return to the page without adding.
+		http.Redirect(w, r, "/content/"+strconv.FormatInt(id, 10), http.StatusSeeOther)
+	default:
+		s.log.Error("add outline segment", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+	}
+}
+
+// handleOutlineDelete removes a segment.
+func (s *Server) handleOutlineDelete(w http.ResponseWriter, r *http.Request) {
+	id, ok := s.requireContentItem(w, r)
+	if !ok {
+		return
+	}
+	segID, err := strconv.ParseInt(r.PathValue("segID"), 10, 64)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	err = store.DeleteOutlineSegment(r.Context(), s.db, segID, id)
+	switch {
+	case err == nil:
+		http.Redirect(w, r, "/content/"+strconv.FormatInt(id, 10), http.StatusSeeOther)
+	case errors.Is(err, store.ErrOutlineSegmentNotFound):
+		http.NotFound(w, r)
+	default:
+		s.log.Error("delete outline segment", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+	}
+}
+
+// handleOutlineMove reorders a segment up or down.
+func (s *Server) handleOutlineMove(w http.ResponseWriter, r *http.Request) {
+	id, ok := s.requireContentItem(w, r)
+	if !ok {
+		return
+	}
+	segID, err := strconv.ParseInt(r.PathValue("segID"), 10, 64)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	err = store.MoveOutlineSegment(r.Context(), s.db, segID, id, r.PostFormValue("dir"))
+	switch {
+	case err == nil:
+		http.Redirect(w, r, "/content/"+strconv.FormatInt(id, 10), http.StatusSeeOther)
+	case errors.Is(err, store.ErrInvalidMove):
+		http.Error(w, "invalid move", http.StatusBadRequest)
+	case errors.Is(err, store.ErrOutlineSegmentNotFound):
+		http.NotFound(w, r)
+	default:
+		s.log.Error("move outline segment", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+	}
+}
+
+// requireContentItem parses the {id} path value and verifies the content item
+// exists, writing a 404/500 and returning ok=false otherwise.
+func (s *Server) requireContentItem(w http.ResponseWriter, r *http.Request) (int64, bool) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		http.NotFound(w, r)
+		return 0, false
+	}
+	if _, err := store.GetContentItem(r.Context(), s.db, id); errors.Is(err, store.ErrContentItemNotFound) {
+		http.NotFound(w, r)
+		return 0, false
+	} else if err != nil {
+		s.log.Error("get content item", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return 0, false
+	}
+	return id, true
 }
 
 // safeReturn restricts post-action redirects to in-app content paths, guarding

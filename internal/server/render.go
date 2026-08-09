@@ -13,6 +13,18 @@ import (
 // funcMap holds template helpers available to every page.
 var funcMap = template.FuncMap{
 	"humanize": humanize,
+	"duration": formatDuration,
+}
+
+// formatDuration renders a whole-second count as "Ns" or "Mm SSs".
+func formatDuration(sec int) string {
+	if sec < 0 {
+		sec = 0
+	}
+	if sec < 60 {
+		return fmt.Sprintf("%ds", sec)
+	}
+	return fmt.Sprintf("%dm %02ds", sec/60, sec%60)
 }
 
 // humanize turns a snake_case identifier into a display label, e.g.

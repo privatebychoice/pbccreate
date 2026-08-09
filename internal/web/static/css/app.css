@@ -174,6 +174,17 @@ dl.meta { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1r
 dl.meta dt { font-weight: 600; }
 dl.meta dd { margin: 0; }
 
+/* Outline / layout */
+ol.outline { list-style: decimal; padding-inline-start: 1.5rem; }
+ol.outline li {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  margin-block-end: 0.5rem;
+}
+.seg-head { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.seg-notes { margin: 0.25rem 0 0; }
+
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
