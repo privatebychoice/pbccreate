@@ -79,6 +79,8 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("POST /content/{id}/description/hashtags", s.handleDescriptionHashtags)
 	mux.HandleFunc("POST /content/{id}/tags", s.handleTagAdd)
 	mux.HandleFunc("POST /content/{id}/tags/{tagID}/remove", s.handleTagRemove)
+	mux.HandleFunc("POST /content/{id}/labels", s.handleLabelAdd)
+	mux.HandleFunc("POST /content/{id}/labels/{labelID}/remove", s.handleLabelRemove)
 	mux.HandleFunc("POST /content/{id}/placements", s.handlePlacementCreate)
 	mux.HandleFunc("POST /content/{id}/placements/{pid}/delete", s.handlePlacementDelete)
 	mux.HandleFunc("POST /content/{id}/placements/{pid}/deliverables", s.handleDeliverableAdd)

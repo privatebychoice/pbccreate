@@ -19,6 +19,7 @@ type boardItem struct {
 	PrevStatus string
 	NextStatus string
 	HasSponsor bool
+	Labels     []store.Label
 }
 
 // statusColumn is one pipeline column on the board.
@@ -69,6 +70,24 @@ func (s *Server) renderContent(w http.ResponseWriter, r *http.Request, status in
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+	labelsByItem, err := store.LabelsByItem(r.Context(), s.db)
+	if err != nil {
+		s.log.Error("labels by item", "err", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	allLabels, err := store.ListAllLabels(r.Context(), s.db)
+	if err != nil {
+		s.log.Error("list all labels", "err", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	// Optional board filter by label.
+	labelFilter, _ := strconv.ParseInt(r.URL.Query().Get("label"), 10, 64)
+	if labelFilter > 0 {
+		items = filterByLabel(items, labelsByItem, labelFilter)
+	}
 
 	data := map[string]any{
 		"Title":       "Content",
@@ -77,8 +96,10 @@ func (s *Server) renderContent(w http.ResponseWriter, r *http.Request, status in
 		"Channels":    channels,
 		"Types":       store.ContentTypes,
 		"Modes":       store.CreatorModes,
-		"Columns":     groupByStatus(items, sponsored),
+		"Columns":     groupByStatus(items, sponsored, labelsByItem),
 		"HasChannels": len(channels) > 0,
+		"AllLabels":   allLabels,
+		"LabelFilter": labelFilter,
 		"Error":       errMsg,
 	}
 	if err := s.tmpl.render(w, status, "content.html.tmpl", data); err != nil {
@@ -91,7 +112,7 @@ func (s *Server) renderContent(w http.ResponseWriter, r *http.Request, status in
 // attaching each item's previous/next status for the Back/Advance controls.
 // Items with an unrecognized status are dropped from the board (should not occur
 // given the schema CHECK, but keeps the view robust).
-func groupByStatus(items []store.ContentItem, sponsored map[int64]bool) []statusColumn {
+func groupByStatus(items []store.ContentItem, sponsored map[int64]bool, labelsByItem map[int64][]store.Label) []statusColumn {
 	index := make(map[string]int, len(store.ContentStatuses))
 	for i, st := range store.ContentStatuses {
 		index[st] = i
@@ -103,7 +124,7 @@ func groupByStatus(items []store.ContentItem, sponsored map[int64]bool) []status
 		if !ok {
 			continue
 		}
-		bi := boardItem{ContentItem: it, HasSponsor: sponsored[it.ID]}
+		bi := boardItem{ContentItem: it, HasSponsor: sponsored[it.ID], Labels: labelsByItem[it.ID]}
 		if i > 0 {
 			bi.PrevStatus = store.ContentStatuses[i-1]
 		}
@@ -118,6 +139,20 @@ func groupByStatus(items []store.ContentItem, sponsored map[int64]bool) []status
 		cols = append(cols, statusColumn{Status: st, Items: byStatus[st]})
 	}
 	return cols
+}
+
+// filterByLabel keeps only items that carry the given label id.
+func filterByLabel(items []store.ContentItem, labelsByItem map[int64][]store.Label, labelID int64) []store.ContentItem {
+	var out []store.ContentItem
+	for _, it := range items {
+		for _, l := range labelsByItem[it.ID] {
+			if l.ID == labelID {
+				out = append(out, it)
+				break
+			}
+		}
+	}
+	return out
 }
 
 // handleContentDetail shows a single content item.
@@ -196,6 +231,19 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	tagCSV := tagNamesCSV(itemTags)
 
+	itemLabels, err := store.ListLabelsForItem(r.Context(), s.db, item.ID)
+	if err != nil {
+		s.log.Error("list item labels", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	channelLabels, err := store.ListLabelsForChannel(r.Context(), s.db, item.ChannelID)
+	if err != nil {
+		s.log.Error("list channel labels", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
 	thumbs, err := store.ListThumbnails(r.Context(), s.db, item.ID)
 	if err != nil {
 		s.log.Error("list thumbnails", "err", err, "id", id)
@@ -252,6 +300,9 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		"ChannelTags":         channelTags,
 		"TagList":             tagCSV,
 		"TagLen":              len(tagCSV),
+		"ItemLabels":          itemLabels,
+		"ChannelLabels":       channelLabels,
+		"LabelColors":         store.LabelColors,
 	}
 	if err := s.tmpl.render(w, http.StatusOK, "content_detail.html.tmpl", data); err != nil {
 		s.log.Error("render content detail", "err", err)

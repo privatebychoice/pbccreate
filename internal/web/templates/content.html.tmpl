@@ -35,6 +35,17 @@
 <p>Create a <a href="/channels">channel</a> first, then you can add content items.</p>
 {{end}}
 
+{{if .AllLabels}}
+<form method="get" action="/content" class="inline-form">
+  <label for="label-filter">Filter by label</label>
+  <select id="label-filter" name="label">
+    <option value="">All</option>
+    {{range .AllLabels}}<option value="{{.ID}}"{{if eq .ID $.LabelFilter}} selected{{end}}>{{.Name}}</option>{{end}}
+  </select>
+  <button type="submit">Filter</button>
+</form>
+{{end}}
+
 <section aria-label="Pipeline board">
   <div class="board">
     {{range .Columns}}
@@ -44,6 +55,11 @@
       <article class="card">
         <strong><a href="/content/{{.ID}}">{{.Title}}</a></strong>{{if .HasSponsor}} <span class="badge-sponsor">sponsored</span>{{end}}
         <div class="muted">{{.ChannelName}} · {{humanize .Type}}{{if .Mode}} · {{humanize .Mode}}{{end}}</div>
+        {{if .Labels}}
+        <div class="card-labels">
+          {{range .Labels}}<span class="label-chip label-{{.Color}}">{{.Name}}</span>{{end}}
+        </div>
+        {{end}}
         <div class="card-actions">
           {{if .PrevStatus}}
           <form method="post" action="/content/{{.ID}}/status">

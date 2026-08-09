@@ -173,6 +173,39 @@
   </form>
 </section>
 
+<section aria-labelledby="labels-heading">
+  <h2 id="labels-heading">Labels <span class="muted">(internal)</span></h2>
+
+  {{if .ItemLabels}}
+  <ul class="chips">
+    {{range .ItemLabels}}
+    <li>
+      <span class="label-chip label-{{.Color}}">{{.Name}}</span>
+      <form method="post" action="/content/{{$.Item.ID}}/labels/{{.ID}}/remove" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+        <button type="submit" aria-label="Remove label {{.Name}}">✕</button>
+      </form>
+    </li>
+    {{end}}
+  </ul>
+  {{else}}
+  <p>No labels yet.</p>
+  {{end}}
+
+  <form method="post" action="/content/{{.Item.ID}}/labels" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <input name="name" placeholder="Add a label" required maxlength="60" list="channel-labels" autocomplete="off">
+    <datalist id="channel-labels">
+      {{range .ChannelLabels}}<option value="{{.Name}}"></option>{{end}}
+    </datalist>
+    <label class="sr-only" for="label-color">Color</label>
+    <select id="label-color" name="color">
+      {{range .LabelColors}}<option value="{{.}}">{{humanize .}}</option>{{end}}
+    </select>
+    <button type="submit">Add label</button>
+  </form>
+</section>
+
 <section aria-labelledby="tags-heading">
   <h2 id="tags-heading">Tags <span class="muted">(SEO keywords)</span></h2>
 
