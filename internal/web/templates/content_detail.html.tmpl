@@ -778,4 +778,30 @@
     <p><button type="submit">Add publication</button></p>
   </form>
 </section>
+
+<section aria-labelledby="retro-heading">
+  <h2 id="retro-heading">Retrospective <span class="muted">(what worked / to improve)</span></h2>
+  <p class="muted">Reflect after publishing. Performance notes are entered by hand — pbccreate makes no network calls, so it pulls no analytics.</p>
+
+  <form method="post" action="/content/{{.Item.ID}}/retrospective" class="stack">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <p>
+      <label for="retro-worked">What worked</label>
+      <textarea id="retro-worked" name="what_worked" rows="3" autocomplete="off">{{.Retrospective.WhatWorked}}</textarea>
+    </p>
+    <p>
+      <label for="retro-improve">To improve next time</label>
+      <textarea id="retro-improve" name="to_improve" rows="3" autocomplete="off">{{.Retrospective.ToImprove}}</textarea>
+    </p>
+    <p>
+      <label for="retro-perf">Performance notes <span class="muted">(manual)</span></label>
+      <textarea id="retro-perf" name="performance_notes" rows="3" autocomplete="off">{{.Retrospective.PerformanceNotes}}</textarea>
+    </p>
+    <p>
+      <label for="retro-reviewed">Reviewed on</label>
+      <input id="retro-reviewed" name="reviewed_on" type="date" value="{{.Retrospective.ReviewedOn}}">
+    </p>
+    <p><button type="submit">Save retrospective</button></p>
+  </form>
+</section>
 {{end}}

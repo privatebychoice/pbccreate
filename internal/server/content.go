@@ -272,6 +272,13 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	retro, err := store.GetRetrospective(r.Context(), s.db, item.ID)
+	if err != nil {
+		s.log.Error("get retrospective", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
 	thumbs, err := store.ListThumbnails(r.Context(), s.db, item.ID)
 	if err != nil {
 		s.log.Error("list thumbnails", "err", err, "id", id)
@@ -348,6 +355,7 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		"Providers":           providers,
 		"Publications":        publications,
 		"Visibilities":        store.Visibilities,
+		"Retrospective":       retro,
 	}
 	if err := s.tmpl.render(w, http.StatusOK, "content_detail.html.tmpl", data); err != nil {
 		s.log.Error("render content detail", "err", err)

@@ -92,6 +92,7 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("POST /content/{id}/publications", s.handlePublicationCreate)
 	mux.HandleFunc("POST /content/{id}/publications/{pubID}", s.handlePublicationUpdate)
 	mux.HandleFunc("POST /content/{id}/publications/{pubID}/delete", s.handlePublicationDelete)
+	mux.HandleFunc("POST /content/{id}/retrospective", s.handleRetrospectiveSave)
 	mux.HandleFunc("POST /content/{id}/tags", s.handleTagAdd)
 	mux.HandleFunc("POST /content/{id}/tags/{tagID}/remove", s.handleTagRemove)
 	mux.HandleFunc("POST /content/{id}/labels", s.handleLabelAdd)
