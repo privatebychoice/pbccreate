@@ -1,0 +1,26 @@
+{{define "content"}}
+<p><a href="/pillars">← Back to pillars</a></p>
+
+<h1>{{.Pillar.Name}}</h1>
+<p class="muted">{{.Pillar.ChannelName}}</p>
+
+{{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+
+<form method="post" action="/pillars/{{.Pillar.ID}}" class="stack">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <p>
+    <label for="name">Name</label>
+    <input id="name" name="name" required maxlength="120" value="{{.Pillar.Name}}" autocomplete="off">
+  </p>
+  <p>
+    <label for="description">Description</label>
+    <textarea id="description" name="description" rows="3" autocomplete="off">{{.Pillar.Description}}</textarea>
+  </p>
+  <p><button type="submit">Save pillar</button></p>
+</form>
+
+<form method="post" action="/pillars/{{.Pillar.ID}}/delete" class="inline-form">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <button type="submit">Delete pillar</button>
+</form>
+{{end}}

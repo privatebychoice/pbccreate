@@ -1,0 +1,49 @@
+{{define "content"}}
+<h1>Pillars <span class="muted">(content themes)</span></h1>
+<p class="muted">Define your channel's core themes, then assign content items to them. The item counts below show coverage balance — spot a neglected pillar.</p>
+
+{{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+
+{{if .HasChannels}}
+<form method="post" action="/pillars" class="stack">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <p>
+    <label for="channel_id">Channel</label>
+    <select id="channel_id" name="channel_id" required>
+      {{range .Channels}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+    </select>
+  </p>
+  <p>
+    <label for="name">Name</label>
+    <input id="name" name="name" required maxlength="120" autocomplete="off">
+  </p>
+  <p>
+    <label for="description">Description</label>
+    <textarea id="description" name="description" rows="2" autocomplete="off"></textarea>
+  </p>
+  <p><button type="submit">Add pillar</button></p>
+</form>
+{{else}}
+<p>Create a <a href="/channels">channel</a> first, then you can define pillars.</p>
+{{end}}
+
+{{if .Coverage}}
+<table>
+  <thead>
+    <tr><th scope="col">Pillar</th><th scope="col">Channel</th><th scope="col">Items</th></tr>
+  </thead>
+  <tbody>
+    {{range .Coverage}}
+    <tr>
+      <td><a href="/pillars/{{.ID}}">{{.Name}}</a>
+        {{if .Description}}<div class="muted">{{.Description}}</div>{{end}}</td>
+      <td>{{.ChannelName}}</td>
+      <td>{{.ItemCount}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{else}}
+<p>No pillars yet. Define your first theme above.</p>
+{{end}}
+{{end}}

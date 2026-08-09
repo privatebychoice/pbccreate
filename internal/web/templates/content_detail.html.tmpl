@@ -222,6 +222,36 @@
   </form>
 </section>
 
+<section aria-labelledby="pillars-heading">
+  <h2 id="pillars-heading">Pillars <span class="muted">(content themes)</span></h2>
+
+  {{if .ItemPillars}}
+  <ul class="chips">
+    {{range .ItemPillars}}
+    <li>
+      <span><a href="/pillars/{{.ID}}">{{.Name}}</a></span>
+      <form method="post" action="/content/{{$.Item.ID}}/pillars/{{.ID}}/remove" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+        <button type="submit" aria-label="Remove pillar {{.Name}}">✕</button>
+      </form>
+    </li>
+    {{end}}
+  </ul>
+  {{else}}
+  <p>No pillars yet.</p>
+  {{end}}
+
+  <form method="post" action="/content/{{.Item.ID}}/pillars" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <input name="name" placeholder="Assign a pillar" required maxlength="120" list="channel-pillars" autocomplete="off">
+    <datalist id="channel-pillars">
+      {{range .ChannelPillars}}<option value="{{.Name}}"></option>{{end}}
+    </datalist>
+    <button type="submit">Assign pillar</button>
+  </form>
+  <p class="muted">Define pillars and see coverage balance on the <a href="/pillars">Pillars</a> page.</p>
+</section>
+
 <section aria-labelledby="tags-heading">
   <h2 id="tags-heading">Tags <span class="muted">(SEO keywords)</span></h2>
 

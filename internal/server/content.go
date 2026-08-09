@@ -279,6 +279,19 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	itemPillars, err := store.ListPillarsForItem(r.Context(), s.db, item.ID)
+	if err != nil {
+		s.log.Error("list item pillars", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	channelPillars, err := store.ListPillarsForChannel(r.Context(), s.db, item.ChannelID)
+	if err != nil {
+		s.log.Error("list channel pillars", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
 	thumbs, err := store.ListThumbnails(r.Context(), s.db, item.ID)
 	if err != nil {
 		s.log.Error("list thumbnails", "err", err, "id", id)
@@ -349,6 +362,8 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		"ItemLabels":          itemLabels,
 		"ChannelLabels":       channelLabels,
 		"LabelColors":         store.LabelColors,
+		"ItemPillars":         itemPillars,
+		"ChannelPillars":      channelPillars,
 		"Attributions":        attributions,
 		"AttributionKinds":    store.AttributionKinds,
 		"LicenseFiles":        licenseFiles,
