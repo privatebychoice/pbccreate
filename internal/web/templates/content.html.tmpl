@@ -42,8 +42,26 @@
       <h2>{{humanize .Status}} <span class="count">{{len .Items}}</span></h2>
       {{range .Items}}
       <article class="card">
-        <strong>{{.Title}}</strong>
+        <strong><a href="/content/{{.ID}}">{{.Title}}</a></strong>
         <div class="muted">{{.ChannelName}} · {{humanize .Type}}{{if .Mode}} · {{humanize .Mode}}{{end}}</div>
+        <div class="card-actions">
+          {{if .PrevStatus}}
+          <form method="post" action="/content/{{.ID}}/status">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <input type="hidden" name="status" value="{{.PrevStatus}}">
+            <input type="hidden" name="return_to" value="/content">
+            <button type="submit" aria-label="Move '{{.Title}}' back to {{humanize .PrevStatus}}">←</button>
+          </form>
+          {{end}}
+          {{if .NextStatus}}
+          <form method="post" action="/content/{{.ID}}/status">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <input type="hidden" name="status" value="{{.NextStatus}}">
+            <input type="hidden" name="return_to" value="/content">
+            <button type="submit" aria-label="Advance '{{.Title}}' to {{humanize .NextStatus}}">→</button>
+          </form>
+          {{end}}
+        </div>
       </article>
       {{else}}
       <p class="muted empty">—</p>

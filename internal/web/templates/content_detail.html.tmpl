@@ -1,0 +1,24 @@
+{{define "content"}}
+<p><a href="/content">← Back to board</a></p>
+
+<h1>{{.Item.Title}}</h1>
+<p class="muted">{{.Item.ChannelName}} · {{humanize .Item.Type}}{{if .Item.Mode}} · {{humanize .Item.Mode}}{{end}}</p>
+
+<form method="post" action="/content/{{.Item.ID}}/status" class="inline-form">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <input type="hidden" name="return_to" value="/content/{{.Item.ID}}">
+  <label for="status">Status</label>
+  <select id="status" name="status">
+    {{range .Statuses}}<option value="{{.}}"{{if eq . $.Item.Status}} selected{{end}}>{{humanize .}}</option>{{end}}
+  </select>
+  <button type="submit">Update status</button>
+</form>
+
+<dl class="meta">
+  <dt>Status</dt><dd>{{humanize .Item.Status}}</dd>
+  <dt>Created</dt><dd>{{if not .Item.CreatedAt.IsZero}}{{.Item.CreatedAt.Format "2006-01-02 15:04"}}{{end}}</dd>
+  <dt>Updated</dt><dd>{{if not .Item.UpdatedAt.IsZero}}{{.Item.UpdatedAt.Format "2006-01-02 15:04"}}{{end}}</dd>
+</dl>
+
+<p class="muted">Scripts, shot lists, thumbnails, and more attach here in later slices.</p>
+{{end}}

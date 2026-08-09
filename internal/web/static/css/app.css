@@ -134,6 +134,34 @@ th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var
 }
 .card .muted { font-size: 0.8rem; }
 .board-col .empty { text-align: center; }
+.card-actions { display: flex; gap: 0.25rem; margin-block-start: 0.5rem; }
+.card-actions form { margin: 0; }
+.card-actions button {
+  padding: 0.1rem 0.5rem;
+  font-size: 0.9rem;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--border);
+}
+
+.inline-form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-block: 1rem;
+}
+.inline-form select {
+  padding: 0.4rem 0.5rem;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+dl.meta { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; }
+dl.meta dt { font-weight: 600; }
+dl.meta dd { margin: 0; }
 
 :focus-visible {
   outline: 2px solid var(--accent);

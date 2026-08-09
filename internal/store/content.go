@@ -13,6 +13,12 @@ import (
 // ErrInvalidContentItem is returned when a content item fails validation.
 var ErrInvalidContentItem = errors.New("content item requires a channel, a title, and a valid type")
 
+// ErrInvalidStatus is returned when a status is not in ContentStatuses.
+var ErrInvalidStatus = errors.New("invalid content status")
+
+// ErrContentItemNotFound is returned when no content item matches an id.
+var ErrContentItemNotFound = errors.New("content item not found")
+
 // Pipeline vocabulary (see docs/SPEC.md §3, §4). ContentStatuses is in board
 // order.
 var (
@@ -102,4 +108,51 @@ func ListContentItems(ctx context.Context, db *sql.DB) ([]ContentItem, error) {
 		return nil, fmt.Errorf("iterate content items: %w", err)
 	}
 	return out, nil
+}
+
+// GetContentItem returns a single content item (with channel name), or
+// ErrContentItemNotFound if it does not exist.
+func GetContentItem(ctx context.Context, db *sql.DB, id int64) (ContentItem, error) {
+	var (
+		ci           ContentItem
+		created, upd string
+	)
+	err := db.QueryRowContext(ctx, `
+		SELECT ci.id, ci.channel_id, c.name, ci.type, ci.mode, ci.title, ci.status, ci.created_at, ci.updated_at
+		FROM content_items ci
+		JOIN channels c ON c.id = ci.channel_id
+		WHERE ci.id = ?`, id).
+		Scan(&ci.ID, &ci.ChannelID, &ci.ChannelName, &ci.Type, &ci.Mode, &ci.Title, &ci.Status, &created, &upd)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return ContentItem{}, ErrContentItemNotFound
+	case err != nil:
+		return ContentItem{}, fmt.Errorf("get content item: %w", err)
+	}
+	ci.CreatedAt = parseTS(created)
+	ci.UpdatedAt = parseTS(upd)
+	return ci, nil
+}
+
+// UpdateContentItemStatus sets a content item's status (and updated_at). Returns
+// ErrInvalidStatus for an unknown status or ErrContentItemNotFound if no row
+// matches.
+func UpdateContentItemStatus(ctx context.Context, db *sql.DB, id int64, status string) error {
+	if !slices.Contains(ContentStatuses, status) {
+		return ErrInvalidStatus
+	}
+	ts := time.Now().UTC().Truncate(time.Second).Format(time.RFC3339)
+	res, err := db.ExecContext(ctx,
+		`UPDATE content_items SET status = ?, updated_at = ? WHERE id = ?`, status, ts, id)
+	if err != nil {
+		return fmt.Errorf("update content status: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("content status rows affected: %w", err)
+	}
+	if n == 0 {
+		return ErrContentItemNotFound
+	}
+	return nil
 }
