@@ -132,6 +132,50 @@ func TestUnsafeMethodPassesWithSameOriginAndToken(t *testing.T) {
 	}
 }
 
+// TestUnsafeMethodPassesWithoutOriginHeader reproduces the real-browser case
+// (e.g. a privacy-hardened Firefox) that omits the Origin header on a same-origin
+// form POST and, under the app's Referrer-Policy, sends no Referer either. With a
+// valid double-submit CSRF token the request must still be accepted.
+func TestUnsafeMethodPassesWithoutOriginHeader(t *testing.T) {
+	s := newTestServer(t)
+
+	getRec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(getRec, httptest.NewRequest(http.MethodGet, "/", nil))
+	token := getCSRFCookie(getRec.Result().Cookies())
+	if token == "" {
+		t.Fatal("expected a CSRF cookie from GET")
+	}
+
+	// No Origin and no Referer — only the token cookie + form field.
+	req := httptest.NewRequest(http.MethodPost, "/", nil)
+	req.Header.Set(csrfHeader, token)
+	req.AddCookie(&http.Cookie{Name: csrfCookie, Value: token})
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, req)
+
+	if rec.Code == http.StatusForbidden {
+		t.Fatalf("header-less same-origin POST with a valid token was rejected (403)")
+	}
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want 405 (passed middleware, no POST route)", rec.Code)
+	}
+}
+
+// TestUnsafeMethodRejectedCrossOriginWithoutToken confirms a cross-origin request
+// that also lacks the CSRF cookie is still blocked (both layers hold).
+func TestUnsafeMethodRejectedCrossOriginWithoutToken(t *testing.T) {
+	s := newTestServer(t)
+	req := httptest.NewRequest(http.MethodPost, "/", nil)
+	req.Header.Set("Origin", "http://evil.example")
+	req.Header.Set(csrfHeader, "anything")
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403 (cross-origin)", rec.Code)
+	}
+}
+
 func getCSRFCookie(cookies []*http.Cookie) string {
 	for _, c := range cookies {
 		if c.Name == csrfCookie {

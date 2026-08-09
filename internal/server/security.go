@@ -31,7 +31,11 @@ func (s *Server) securityHeaders(next http.Handler) http.Handler {
 		h := w.Header()
 		h.Set("Content-Security-Policy", csp)
 		h.Set("X-Content-Type-Options", "nosniff")
-		h.Set("Referrer-Policy", "no-referrer")
+		// same-origin (not no-referrer): a referrer is never leaked cross-origin
+		// (the app makes no external requests anyway), but same-origin requests
+		// keep a Referer so the same-origin check below has a value to verify when
+		// the browser omits the Origin header on form POSTs.
+		h.Set("Referrer-Policy", "same-origin")
 		h.Set("X-Frame-Options", "DENY")
 		next.ServeHTTP(w, r)
 	})
@@ -89,15 +93,24 @@ func isUnsafeMethod(m string) bool {
 	}
 }
 
-// sameOrigin verifies the request's Origin (or, failing that, Referer) host
-// matches the target Host. A missing/unparseable value is treated as failure.
+// sameOrigin verifies that a state-changing request did not originate from
+// another site. When an Origin (or, failing that, Referer) header is present its
+// host must match the target Host — this rejects genuine cross-origin attacks.
+//
+// When BOTH headers are absent the request is allowed: privacy-hardened browsers
+// legitimately omit Origin on same-origin form POSTs and may strip Referer, so a
+// missing origin is not proof of an attack. The double-submit CSRF token remains
+// the primary defense — a cross-site request cannot carry the SameSite=Strict
+// cookie, so its token can never match (a cross-site attacker also sends an
+// Origin header, which is caught above). An unparseable header is treated as a
+// mismatch.
 func sameOrigin(r *http.Request) bool {
 	src := r.Header.Get("Origin")
 	if src == "" {
 		src = r.Header.Get("Referer")
 	}
 	if src == "" {
-		return false
+		return true // no origin information; rely on the CSRF token
 	}
 	u, err := url.Parse(src)
 	if err != nil || u.Host == "" {
