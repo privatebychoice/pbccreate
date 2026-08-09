@@ -281,11 +281,21 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	checklist, checklistReady := buildChecklist(checklistInput{
+		Placements:   placementViews,
+		Attributions: attributions,
+		Thumbnails:   thumbs,
+		RenderedDesc: desc.Render(),
+		Tags:         itemTags,
+	})
+
 	data := map[string]any{
 		"Title":               item.Title,
 		"Build":               buildinfo.Build,
 		"CSRFToken":           csrfToken(r),
 		"Item":                item,
+		"Checklist":           checklist,
+		"ChecklistReady":      checklistReady,
 		"Statuses":            store.ContentStatuses,
 		"Script":              script,
 		"Segments":            rows,

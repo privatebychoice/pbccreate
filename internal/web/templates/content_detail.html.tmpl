@@ -20,6 +20,22 @@
   <dt>Updated</dt><dd>{{if not .Item.UpdatedAt.IsZero}}{{.Item.UpdatedAt.Format "2006-01-02 15:04"}}{{end}}</dd>
 </dl>
 
+<section aria-labelledby="checklist-heading">
+  <h2 id="checklist-heading">Pre-publish checklist
+    {{if .ChecklistReady}}<span class="badge-ready">Ready</span>{{else}}<span class="badge-blocked">Not ready</span>{{end}}
+  </h2>
+  <ul class="prepublish">
+    {{range .Checklist}}
+    <li class="check-{{.State}}">
+      <span class="check-icon" aria-hidden="true">{{if eq (printf "%s" .State) "ok"}}✓{{else if eq (printf "%s" .State) "fail"}}✗{{else}}—{{end}}</span>
+      <span class="sr-only">{{if eq (printf "%s" .State) "ok"}}Pass:{{else if eq (printf "%s" .State) "fail"}}Needs attention:{{else}}Not applicable:{{end}}</span>
+      <span><strong>{{.Label}}</strong> <span class="muted">{{.Detail}}</span></span>
+    </li>
+    {{end}}
+  </ul>
+  <p class="muted">Output-file recording and marking the item published (with override) arrive with the publication record.</p>
+</section>
+
 <section aria-labelledby="script-heading">
   <h2 id="script-heading">Script</h2>
   <p class="muted">{{.Script.WordCount}} words · ~{{.Script.DurationLabel}} at {{.Script.WPM}} wpm</p>

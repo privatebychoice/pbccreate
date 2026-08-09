@@ -185,6 +185,26 @@ ul.chips button { background: transparent; border: 0; color: var(--muted); curso
 .label-gray   { background: #4b5563; }
 .card-labels { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-block-start: 0.35rem; }
 
+/* Pre-publish checklist (SPEC 5.12) */
+ul.prepublish { list-style: none; padding: 0; margin: 0.5rem 0; }
+ul.prepublish li { display: flex; align-items: baseline; gap: 0.5rem; margin-block-end: 0.35rem; }
+.check-icon { font-weight: 700; width: 1.2em; text-align: center; flex: 0 0 auto; }
+li.check-ok .check-icon { color: #059669; }
+li.check-fail .check-icon { color: #b91c1c; }
+li.check-na .check-icon { color: var(--muted); }
+.badge-ready, .badge-blocked {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #fff;
+  border-radius: 3px;
+  padding: 0 0.4rem;
+  vertical-align: middle;
+}
+.badge-ready { background: #059669; }
+.badge-blocked { background: #b45309; }
+
 textarea.rendered {
   width: 100%;
   max-width: 48rem;
