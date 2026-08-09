@@ -80,6 +80,64 @@
   {{end}}
 </section>
 
+<section aria-labelledby="titles-heading">
+  <h2 id="titles-heading">Titles <span class="muted">(working / A-B)</span></h2>
+
+  {{if .TitleCandidates}}
+  <ul class="checklist">
+    {{range .TitleCandidates}}
+    <li>
+      {{if .Chosen}}
+      <span aria-hidden="true">★</span>
+      {{else}}
+      <form method="post" action="/content/{{$.Item.ID}}/titles/{{.ID}}/choose" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+        <button type="submit" aria-label="Choose '{{.Text}}'">☆</button>
+      </form>
+      {{end}}
+      <span{{if .Chosen}} class="circled"{{end}}>{{.Text}}</span>
+      <form method="post" action="/content/{{$.Item.ID}}/titles/{{.ID}}/delete" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+        <button type="submit" aria-label="Delete title '{{.Text}}'">✕</button>
+      </form>
+    </li>
+    {{end}}
+  </ul>
+  {{else}}
+  <p>No candidate titles yet.</p>
+  {{end}}
+
+  <form method="post" action="/content/{{.Item.ID}}/titles" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <input name="text" placeholder="Candidate title" required maxlength="300" autocomplete="off">
+    <button type="submit">Add candidate</button>
+  </form>
+
+  <h3>Channel swipe file <span class="muted">(patterns that worked)</span></h3>
+  {{if .Swipe}}
+  <ul class="chips">
+    {{range .Swipe}}
+    <li>
+      <span>{{.Pattern}}{{if .Note}} <span class="muted">— {{.Note}}</span>{{end}}</span>
+      <form method="post" action="/content/{{$.Item.ID}}/swipe/{{.ID}}/delete" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+        <button type="submit" aria-label="Delete swipe pattern">✕</button>
+      </form>
+    </li>
+    {{end}}
+  </ul>
+  {{else}}
+  <p class="muted">No swipe patterns yet for this channel.</p>
+  {{end}}
+
+  <form method="post" action="/content/{{.Item.ID}}/swipe" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <input name="pattern" placeholder="Title pattern (e.g. How I X in Y)" required maxlength="200" autocomplete="off">
+    <input name="note" placeholder="Note (optional)" maxlength="200" autocomplete="off">
+    <button type="submit">Add pattern</button>
+  </form>
+</section>
+
 <section aria-labelledby="script-heading">
   <h2 id="script-heading">Script</h2>
   <p class="muted">{{.Script.WordCount}} words · ~{{.Script.DurationLabel}} at {{.Script.WPM}} wpm</p>

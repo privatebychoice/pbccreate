@@ -180,6 +180,19 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	titleCandidates, err := store.ListTitleCandidates(r.Context(), s.db, item.ID)
+	if err != nil {
+		s.log.Error("list title candidates", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	swipe, err := store.ListSwipe(r.Context(), s.db, item.ChannelID)
+	if err != nil {
+		s.log.Error("list swipe", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
 	segments, err := store.ListOutlineSegments(r.Context(), s.db, item.ID)
 	if err != nil {
 		s.log.Error("list outline segments", "err", err, "id", id)
@@ -393,6 +406,8 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		"Item":                item,
 		"Checklist":           checklist,
 		"ChecklistReady":      checklistReady,
+		"TitleCandidates":     titleCandidates,
+		"Swipe":               swipe,
 		"Statuses":            store.ContentStatuses,
 		"Script":              script,
 		"Segments":            rows,
