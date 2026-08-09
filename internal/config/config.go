@@ -21,8 +21,9 @@ type Config struct {
 	DataDir   string // SQLite DB + local state
 	ConfigDir string // config files
 
-	MediaRoots []string // catalogued media locations
-	AssetRoot  string   // cross-project asset-library root (optional, §5.16)
+	MediaRoots  []string // catalogued media locations
+	AssetRoot   string   // cross-project asset-library root (optional, §5.16)
+	ProjectRoot string   // writable base for scaffolded Resolve projects (optional, §8.1)
 
 	Addr string // loopback listen address
 
@@ -52,6 +53,7 @@ func Load() (*Config, error) {
 		ConfigDir:      configDir,
 		MediaRoots:     splitPaths(os.Getenv("PBCCREATE_MEDIA_ROOTS")),
 		AssetRoot:      os.Getenv("PBCCREATE_ASSET_ROOT"),
+		ProjectRoot:    os.Getenv("PBCCREATE_PROJECT_ROOT"),
 		Addr:           envOr("PBCCREATE_ADDR", defaultAddr),
 		FFprobe:        envOr("PBCCREATE_FFPROBE", "ffprobe"),
 		FFmpeg:         envOr("PBCCREATE_FFMPEG", "ffmpeg"),
@@ -68,6 +70,7 @@ func (c *Config) Log(log *slog.Logger) {
 		"config_dir", c.ConfigDir,
 		"media_roots", c.MediaRoots,
 		"asset_root", c.AssetRoot,
+		"project_root", c.ProjectRoot,
 		"addr", c.Addr,
 		"network_enabled", c.NetworkEnabled,
 	)

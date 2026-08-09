@@ -4,6 +4,9 @@ package main
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"flag"
 	"fmt"
 	"log/slog"
 	"os"
@@ -14,6 +17,7 @@ import (
 
 	"go.privatebychoice.com/pbccreate/internal/buildinfo"
 	"go.privatebychoice.com/pbccreate/internal/config"
+	"go.privatebychoice.com/pbccreate/internal/resolve"
 	"go.privatebychoice.com/pbccreate/internal/server"
 	"go.privatebychoice.com/pbccreate/internal/store"
 )
@@ -35,7 +39,7 @@ func main() {
 	case "serve":
 		err = runServe(log)
 	case "scaffold":
-		err = runScaffold(log)
+		err = runScaffold(log, args)
 	case "help", "-h", "--help":
 		usage()
 	default:
@@ -79,11 +83,151 @@ func runServe(log *slog.Logger) error {
 	return srv.Run(ctx)
 }
 
-// runScaffold will create DaVinci Resolve project folders (docs/SPEC.md §8.1).
-// Arrives in a later slice.
-func runScaffold(log *slog.Logger) error {
-	log.Warn("scaffold: not yet implemented (upcoming slice)")
+// runScaffold creates a DaVinci Resolve project folder tree (docs/SPEC.md §8.1).
+// With -item it derives the project name from the content item and exports the
+// script and shot list into the Docs folder; the writable base comes from -root
+// or PBCCREATE_PROJECT_ROOT. It also reports whether the optional Resolve
+// scripting prerequisites are present (§8.2).
+func runScaffold(log *slog.Logger, args []string) error {
+	fs := flag.NewFlagSet("scaffold", flag.ContinueOnError)
+	itemID := fs.Int64("item", 0, "content item ID to scaffold a Resolve project for")
+	root := fs.String("root", "", "writable base directory (default: PBCCREATE_PROJECT_ROOT)")
+	name := fs.String("name", "", "project folder name (default: derived from the item title)")
+	docs := fs.Bool("docs", true, "export the script and shot list into the Docs folder (requires -item)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+
+	base := *root
+	if base == "" {
+		base = cfg.ProjectRoot
+	}
+	if base == "" {
+		return errors.New("no writable base directory: pass -root or set PBCCREATE_PROJECT_ROOT")
+	}
+
+	projectName := *name
+	mode := ""
+	var docFiles map[string]string
+
+	if *itemID > 0 {
+		ctx := context.Background()
+		dbPath := filepath.Join(cfg.DataDir, "pbccreate.db")
+		db, err := store.Open(ctx, dbPath, log)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = db.Close() }()
+		if _, err := store.Migrate(ctx, db, store.MigrationsFS(), log); err != nil {
+			return err
+		}
+
+		item, err := store.GetContentItem(ctx, db, *itemID)
+		if err != nil {
+			return err
+		}
+		mode = item.Mode
+		if projectName == "" {
+			projectName = item.Title
+		}
+		if *docs {
+			docFiles, err = buildScaffoldDocs(ctx, db, item)
+			if err != nil {
+				return err
+			}
+		}
+		log.Info("scaffolding from content item", "item", item.ID, "title", item.Title, "mode", item.Mode)
+	}
+
+	if strings.TrimSpace(projectName) == "" {
+		return errors.New("no project name: pass -name or -item")
+	}
+
+	integ := resolve.New(cfg.Python)
+	res, err := integ.Scaffolder().Scaffold(resolve.ScaffoldSpec{
+		Base:        base,
+		ProjectName: projectName,
+		Mode:        mode,
+		Template:    resolve.DefaultTemplate(mode),
+		Docs:        docFiles,
+	})
+	if err != nil {
+		return err
+	}
+
+	log.Info("scaffolded resolve project", "root", res.ProjectRoot, "dirs", len(res.Dirs), "docs", len(res.Docs))
+	fmt.Println("Created project tree: " + res.ProjectRoot)
+	for _, d := range res.Dirs {
+		fmt.Println("  " + d)
+	}
+	for _, d := range res.Docs {
+		fmt.Println("  " + d + "  (doc)")
+	}
+
+	if st := integ.Scripting(); st.Available {
+		fmt.Println("\nResolve scripting: prerequisites detected (create/import/timeline lands in a later slice).")
+	} else {
+		fmt.Println("\nResolve scripting unavailable: " + st.Reason)
+	}
 	return nil
+}
+
+// buildScaffoldDocs renders the item's script and shot list into Markdown files
+// for the scaffolded Docs folder. Empty sections are skipped.
+func buildScaffoldDocs(ctx context.Context, db *sql.DB, item store.ContentItem) (map[string]string, error) {
+	docs := map[string]string{}
+
+	sc, err := store.GetScript(ctx, db, item.ID)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(sc.Body) != "" {
+		docs["script.md"] = "# " + item.Title + " — Script\n\n" + strings.TrimSpace(sc.Body) + "\n"
+	}
+
+	shots, err := store.ListShots(ctx, db, item.ID)
+	if err != nil {
+		return nil, err
+	}
+	if len(shots) > 0 {
+		docs["shotlist.md"] = renderShotListMarkdown(item, shots)
+	}
+
+	return docs, nil
+}
+
+// renderShotListMarkdown formats a shot list as a numbered Markdown document.
+func renderShotListMarkdown(item store.ContentItem, shots []store.Shot) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "# %s — Shot list\n\n", item.Title)
+	for _, s := range shots {
+		fmt.Fprintf(&b, "%d. %s\n", s.Position, s.Description)
+		if meta := shotMeta(s); meta != "" {
+			fmt.Fprintf(&b, "   - %s\n", meta)
+		}
+		if strings.TrimSpace(s.Notes) != "" {
+			fmt.Fprintf(&b, "   - Notes: %s\n", strings.TrimSpace(s.Notes))
+		}
+	}
+	return b.String()
+}
+
+// shotMeta joins the non-empty scene/framing/camera fields of a shot.
+func shotMeta(s store.Shot) string {
+	var parts []string
+	for _, p := range []struct{ label, val string }{
+		{"Scene", s.Scene}, {"Framing", s.Framing}, {"Camera", s.Camera},
+	} {
+		if v := strings.TrimSpace(p.val); v != "" {
+			parts = append(parts, p.label+": "+v)
+		}
+	}
+	return strings.Join(parts, " · ")
 }
 
 func usage() {
