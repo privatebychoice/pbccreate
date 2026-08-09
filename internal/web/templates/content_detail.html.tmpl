@@ -173,6 +173,45 @@
   </form>
 </section>
 
+<section aria-labelledby="desc-heading">
+  <h2 id="desc-heading">Description</h2>
+
+  <form method="post" action="/content/{{.Item.ID}}/description" class="stack">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <p>
+      <label for="d-intro">Intro</label>
+      <textarea id="d-intro" name="intro" rows="3" autocomplete="off">{{.Description.Intro}}</textarea>
+    </p>
+    <p>
+      <label for="d-chapters">Chapters</label>
+      <textarea id="d-chapters" name="chapters" rows="5" autocomplete="off">{{.Description.Chapters}}</textarea>
+    </p>
+    <p>
+      <label for="d-links">Links</label>
+      <textarea id="d-links" name="links" rows="3" autocomplete="off">{{.Description.Links}}</textarea>
+    </p>
+    <p>
+      <label for="d-disclosure">Disclosure / affiliate</label>
+      <textarea id="d-disclosure" name="disclosure" rows="2" autocomplete="off">{{.Description.Disclosure}}</textarea>
+    </p>
+    <p>
+      <label for="d-hashtags">Hashtags</label>
+      <textarea id="d-hashtags" name="hashtags" rows="2" autocomplete="off">{{.Description.Hashtags}}</textarea>
+    </p>
+    <p><button type="submit">Save description</button></p>
+  </form>
+
+  <form method="post" action="/content/{{.Item.ID}}/description/chapters" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <button type="submit">Fill chapters from outline</button>
+    <span class="muted">Overwrites the chapters block; save other edits first.</span>
+  </form>
+
+  <h3>Preview</h3>
+  <textarea id="desc-rendered" class="rendered" readonly rows="12" aria-label="Rendered description">{{.DescriptionRendered}}</textarea>
+  <p><button type="button" data-copy="desc-rendered">Copy description</button></p>
+</section>
+
 <section aria-labelledby="media-heading">
   <div class="seg-head">
     <h2 id="media-heading">Media</h2>
@@ -299,5 +338,5 @@
   </form>
 </section>
 
-<p class="muted">Thumbnails, descriptions, and more attach here in later slices.</p>
+<p class="muted">Thumbnails and more attach here in later slices.</p>
 {{end}}

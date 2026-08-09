@@ -168,6 +168,13 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	desc, err := store.GetDescription(r.Context(), s.db, item.ID)
+	if err != nil {
+		s.log.Error("get description", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
 	data := map[string]any{
 		"Title":               item.Title,
 		"Build":               buildinfo.Build,
@@ -185,6 +192,8 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		"ProbeAvailable":      media.ProbeAvailable(s.cfg.FFprobe),
 		"ThumbAvailable":      media.ThumbAvailable(s.cfg.FFmpeg),
 		"Notice":              notice,
+		"Description":         desc,
+		"DescriptionRendered": desc.Render(),
 	}
 	if err := s.tmpl.render(w, http.StatusOK, "content_detail.html.tmpl", data); err != nil {
 		s.log.Error("render content detail", "err", err)

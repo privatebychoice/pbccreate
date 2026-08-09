@@ -115,6 +115,18 @@ th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var
 
 .muted { color: var(--muted); }
 
+textarea.rendered {
+  width: 100%;
+  max-width: 48rem;
+  padding: 0.5rem;
+  font: 0.85rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  resize: vertical;
+}
+
 /* Pipeline board */
 .board {
   display: flex;
