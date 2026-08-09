@@ -16,6 +16,8 @@ var (
 	ErrFormatNotFound        = errors.New("format not found")
 	ErrInvalidFormatSegment  = errors.New("segment title is required")
 	ErrFormatSegmentNotFound = errors.New("format segment not found")
+	ErrInvalidFormatShot     = errors.New("shot description is required")
+	ErrFormatShotNotFound    = errors.New("format shot not found")
 )
 
 // Format is a reusable content template for a channel (SPEC §5.14): a default
@@ -47,6 +49,19 @@ type FormatSegment struct {
 	Title         string
 	Notes         string
 	TargetSeconds int
+}
+
+// FormatShot is one default shot-list row in a format (no status — that is
+// per-item planning).
+type FormatShot struct {
+	ID          int64
+	FormatID    int64
+	Position    int
+	Description string
+	Scene       string
+	Framing     string
+	Camera      string
+	Notes       string
 }
 
 // normFormatType returns a valid content type, defaulting to "video".
@@ -235,9 +250,72 @@ func MoveFormatSegment(ctx context.Context, db *sql.DB, segID, formatID int64, d
 	return err
 }
 
+// ListFormatShots returns a format's default shot-list in order.
+func ListFormatShots(ctx context.Context, db *sql.DB, formatID int64) ([]FormatShot, error) {
+	rows, err := db.QueryContext(ctx,
+		`SELECT id, format_id, position, description, scene, framing, camera, notes FROM format_shots
+		 WHERE format_id = ? ORDER BY position, id`, formatID)
+	if err != nil {
+		return nil, fmt.Errorf("query format shots: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var out []FormatShot
+	for rows.Next() {
+		var fs FormatShot
+		if err := rows.Scan(&fs.ID, &fs.FormatID, &fs.Position, &fs.Description, &fs.Scene, &fs.Framing, &fs.Camera, &fs.Notes); err != nil {
+			return nil, fmt.Errorf("scan format shot: %w", err)
+		}
+		out = append(out, fs)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate format shots: %w", err)
+	}
+	return out, nil
+}
+
+// AddFormatShot appends a default shot row (description required).
+func AddFormatShot(ctx context.Context, db *sql.DB, formatID int64, sh FormatShot) error {
+	sh.Description = strings.TrimSpace(sh.Description)
+	if sh.Description == "" {
+		return ErrInvalidFormatShot
+	}
+	var next int
+	if err := db.QueryRowContext(ctx,
+		`SELECT COALESCE(MAX(position), 0) + 1 FROM format_shots WHERE format_id = ?`, formatID).Scan(&next); err != nil {
+		return fmt.Errorf("next format shot position: %w", err)
+	}
+	if _, err := db.ExecContext(ctx,
+		`INSERT INTO format_shots (format_id, position, description, scene, framing, camera, notes) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		formatID, next, sh.Description, strings.TrimSpace(sh.Scene), strings.TrimSpace(sh.Framing),
+		strings.TrimSpace(sh.Camera), strings.TrimSpace(sh.Notes)); err != nil {
+		return fmt.Errorf("insert format shot: %w", err)
+	}
+	return nil
+}
+
+// DeleteFormatShot removes a default shot row scoped to its format.
+func DeleteFormatShot(ctx context.Context, db *sql.DB, shotID, formatID int64) error {
+	res, err := db.ExecContext(ctx,
+		`DELETE FROM format_shots WHERE id = ? AND format_id = ?`, shotID, formatID)
+	if err != nil {
+		return fmt.Errorf("delete format shot: %w", err)
+	}
+	return checkAffected(res, ErrFormatShotNotFound)
+}
+
+// MoveFormatShot reorders a default shot row up or down.
+func MoveFormatShot(ctx context.Context, db *sql.DB, shotID, formatID int64, dir string) error {
+	err := moveOrdered(ctx, db, "format_shots", shotID, formatID, dir)
+	if errors.Is(err, errOrderedNotFound) {
+		return ErrFormatShotNotFound
+	}
+	return err
+}
+
 // SeedContentItemFromFormat creates a content item from a format (using its
-// default type/mode) and copies the format's default outline into it. The title
-// is supplied by the caller.
+// default type/mode) and copies the format's default outline and shot-list into
+// it. The title is supplied by the caller.
 func SeedContentItemFromFormat(ctx context.Context, db *sql.DB, formatID int64, title string) (ContentItem, error) {
 	f, err := GetFormat(ctx, db, formatID)
 	if err != nil {
@@ -254,6 +332,17 @@ func SeedContentItemFromFormat(ctx context.Context, db *sql.DB, formatID int64, 
 	for _, s := range segs {
 		if _, err := AddOutlineSegment(ctx, db, item.ID, s.Title, s.Notes, s.TargetSeconds); err != nil {
 			return ContentItem{}, fmt.Errorf("seed outline: %w", err)
+		}
+	}
+	shots, err := ListFormatShots(ctx, db, formatID)
+	if err != nil {
+		return ContentItem{}, err
+	}
+	for _, sh := range shots {
+		if _, err := AddShot(ctx, db, item.ID, Shot{
+			Description: sh.Description, Scene: sh.Scene, Framing: sh.Framing, Camera: sh.Camera, Notes: sh.Notes,
+		}); err != nil {
+			return ContentItem{}, fmt.Errorf("seed shot: %w", err)
 		}
 	}
 	return item, nil

@@ -75,9 +75,58 @@
   </form>
 </section>
 
+<section aria-labelledby="fmt-shots-heading">
+  <h2 id="fmt-shots-heading">Default shot-list</h2>
+  {{if .Shots}}
+  <ol class="shots">
+    {{range .Shots}}
+    <li>
+      <div class="seg-head">
+        <strong>{{.Description}}</strong>
+        <span class="muted">
+          <form method="post" action="/formats/{{$.Format.ID}}/shots/{{.ID}}/move" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <input type="hidden" name="dir" value="up">
+            <button type="submit" aria-label="Move '{{.Description}}' up">↑</button>
+          </form>
+          <form method="post" action="/formats/{{$.Format.ID}}/shots/{{.ID}}/move" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <input type="hidden" name="dir" value="down">
+            <button type="submit" aria-label="Move '{{.Description}}' down">↓</button>
+          </form>
+          <form method="post" action="/formats/{{$.Format.ID}}/shots/{{.ID}}/delete" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" aria-label="Delete '{{.Description}}'">Delete</button>
+          </form>
+        </span>
+      </div>
+      {{if or .Scene .Framing .Camera}}
+      <p class="seg-notes muted">
+        {{if .Scene}}Scene: {{.Scene}} {{end}}{{if .Framing}}· Framing: {{.Framing}} {{end}}{{if .Camera}}· Camera: {{.Camera}}{{end}}
+      </p>
+      {{end}}
+      {{if .Notes}}<p class="seg-notes muted">{{.Notes}}</p>{{end}}
+    </li>
+    {{end}}
+  </ol>
+  {{else}}
+  <p>No default shots yet.</p>
+  {{end}}
+
+  <form method="post" action="/formats/{{.Format.ID}}/shots" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <input name="description" placeholder="Shot description" required maxlength="300" autocomplete="off">
+    <input name="scene" placeholder="Scene" maxlength="120" autocomplete="off">
+    <input name="framing" placeholder="Framing" maxlength="120" autocomplete="off">
+    <input name="camera" placeholder="Camera" maxlength="120" autocomplete="off">
+    <input name="notes" placeholder="Notes" maxlength="500" autocomplete="off">
+    <button type="submit">Add shot</button>
+  </form>
+</section>
+
 <section aria-labelledby="fmt-seed-heading">
   <h2 id="fmt-seed-heading">Seed a content item</h2>
-  <p class="muted">Creates a {{humanize .Format.DefaultType}} in {{.Format.ChannelName}} with this outline pre-filled.</p>
+  <p class="muted">Creates a {{humanize .Format.DefaultType}} in {{.Format.ChannelName}} with this outline and shot-list pre-filled.</p>
   <form method="post" action="/formats/{{.Format.ID}}/seed" class="inline-form">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <input name="title" placeholder="New item title" required maxlength="300" autocomplete="off">

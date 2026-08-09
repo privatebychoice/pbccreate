@@ -64,7 +64,25 @@ func TestFormatCRUDSegmentsAndSeed(t *testing.T) {
 		t.Errorf("segment count = %d, want 3", tut.SegmentCount)
 	}
 
-	// Seed a content item: it copies type/mode and the outline in order.
+	// Default shot-list: add two, reorder, and confirm.
+	if err := AddFormatShot(ctx, db, f.ID, FormatShot{Description: "  "}); err != ErrInvalidFormatShot {
+		t.Errorf("empty shot err = %v, want ErrInvalidFormatShot", err)
+	}
+	_ = AddFormatShot(ctx, db, f.ID, FormatShot{Description: "Wide establishing", Scene: "int", Camera: "A"})
+	_ = AddFormatShot(ctx, db, f.ID, FormatShot{Description: "Close up"})
+	fshots, _ := ListFormatShots(ctx, db, f.ID)
+	if len(fshots) != 2 || fshots[0].Description != "Wide establishing" {
+		t.Fatalf("format shots wrong: %+v", fshots)
+	}
+	if err := MoveFormatShot(ctx, db, fshots[1].ID, f.ID, "up"); err != nil {
+		t.Fatalf("MoveFormatShot: %v", err)
+	}
+	fshots, _ = ListFormatShots(ctx, db, f.ID)
+	if fshots[0].Description != "Close up" {
+		t.Fatalf("shot order after move wrong: %+v", fshots)
+	}
+
+	// Seed a content item: it copies type/mode, outline, and shot-list in order.
 	item, err := SeedContentItemFromFormat(ctx, db, f.ID, "My Tutorial")
 	if err != nil {
 		t.Fatalf("SeedContentItemFromFormat: %v", err)
@@ -75,6 +93,10 @@ func TestFormatCRUDSegmentsAndSeed(t *testing.T) {
 	outline, _ := ListOutlineSegments(ctx, db, item.ID)
 	if len(outline) != 3 || outline[0].Title != "Hook" || outline[1].Title != "Outro" {
 		t.Fatalf("seeded outline wrong: %+v", outline)
+	}
+	shots, _ := ListShots(ctx, db, item.ID)
+	if len(shots) != 2 || shots[0].Description != "Close up" || shots[0].Status != "planned" {
+		t.Fatalf("seeded shots wrong: %+v", shots)
 	}
 
 	// Delete a segment, then delete the format (cascades remaining).

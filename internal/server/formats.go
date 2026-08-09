@@ -116,6 +116,60 @@ func (s *Server) handleFormatSegmentMove(w http.ResponseWriter, r *http.Request)
 	s.finishFormatSegment(w, r, id, err)
 }
 
+func (s *Server) handleFormatShotAdd(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathInt64(w, r, "id")
+	if !ok {
+		return
+	}
+	err := store.AddFormatShot(r.Context(), s.db, id, store.FormatShot{
+		Description: r.PostFormValue("description"),
+		Scene:       r.PostFormValue("scene"),
+		Framing:     r.PostFormValue("framing"),
+		Camera:      r.PostFormValue("camera"),
+		Notes:       r.PostFormValue("notes"),
+	})
+	if err != nil && !errors.Is(err, store.ErrInvalidFormatShot) {
+		s.log.Error("add format shot", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	s.redirectToFormat(w, r, id)
+}
+
+func (s *Server) handleFormatShotDelete(w http.ResponseWriter, r *http.Request) {
+	id, shotID, ok := formatAndShot(w, r)
+	if !ok {
+		return
+	}
+	err := store.DeleteFormatShot(r.Context(), s.db, shotID, id)
+	s.finishFormatShot(w, r, id, err)
+}
+
+func (s *Server) handleFormatShotMove(w http.ResponseWriter, r *http.Request) {
+	id, shotID, ok := formatAndShot(w, r)
+	if !ok {
+		return
+	}
+	err := store.MoveFormatShot(r.Context(), s.db, shotID, id, r.PostFormValue("dir"))
+	if errors.Is(err, store.ErrInvalidMove) {
+		http.Error(w, "invalid move", http.StatusBadRequest)
+		return
+	}
+	s.finishFormatShot(w, r, id, err)
+}
+
+func (s *Server) finishFormatShot(w http.ResponseWriter, r *http.Request, formatID int64, err error) {
+	switch {
+	case err == nil:
+		s.redirectToFormat(w, r, formatID)
+	case errors.Is(err, store.ErrFormatShotNotFound):
+		http.NotFound(w, r)
+	default:
+		s.log.Error("format shot op", "err", err, "format", formatID)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+	}
+}
+
 // handleFormatSeed creates a content item from the format and jumps to it.
 func (s *Server) handleFormatSeed(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathInt64(w, r, "id")
@@ -197,12 +251,19 @@ func (s *Server) renderFormatDetail(w http.ResponseWriter, r *http.Request, id i
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+	shots, err := store.ListFormatShots(r.Context(), s.db, id)
+	if err != nil {
+		s.log.Error("list format shots", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
 	data := map[string]any{
 		"Title":     "Format: " + f.Name,
 		"Build":     buildinfo.Build,
 		"CSRFToken": csrfToken(r),
 		"Format":    f,
 		"Segments":  segs,
+		"Shots":     shots,
 		"Types":     store.ContentTypes,
 		"Modes":     store.CreatorModes,
 		"Error":     errMsg,
@@ -227,4 +288,16 @@ func formatAndSegment(w http.ResponseWriter, r *http.Request) (formatID, segID i
 		return 0, 0, false
 	}
 	return formatID, segID, true
+}
+
+func formatAndShot(w http.ResponseWriter, r *http.Request) (formatID, shotID int64, ok bool) {
+	formatID, ok = pathInt64(w, r, "id")
+	if !ok {
+		return 0, 0, false
+	}
+	shotID, ok = pathInt64(w, r, "shotID")
+	if !ok {
+		return 0, 0, false
+	}
+	return formatID, shotID, true
 }

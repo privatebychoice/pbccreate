@@ -45,6 +45,14 @@ func TestFormatDefineAndSeed(t *testing.T) {
 		t.Fatalf("want 2 format segments, got %d", len(segs))
 	}
 
+	// Add a default shot.
+	if rec := postForm(t, s, loc+"/shots", token, url.Values{"description": {"Wide establishing"}, "camera": {"A"}}); rec.Code != http.StatusSeeOther {
+		t.Fatalf("add format shot = %d, want 303", rec.Code)
+	}
+	if fshots, _ := store.ListFormatShots(ctx, s.db, formatID); len(fshots) != 1 {
+		t.Fatalf("want 1 format shot, got %d", len(fshots))
+	}
+
 	// Seed a content item from the format.
 	seed := postForm(t, s, loc+"/seed", token, url.Values{"title": {"My Tutorial"}})
 	if seed.Code != http.StatusSeeOther {
@@ -63,6 +71,10 @@ func TestFormatDefineAndSeed(t *testing.T) {
 	outline, _ := store.ListOutlineSegments(ctx, s.db, itemID)
 	if len(outline) != 2 || outline[0].Title != "Hook" {
 		t.Fatalf("seeded outline wrong: %+v", outline)
+	}
+	shots, _ := store.ListShots(ctx, s.db, itemID)
+	if len(shots) != 1 || shots[0].Description != "Wide establishing" {
+		t.Fatalf("seeded shots wrong: %+v", shots)
 	}
 
 	// Seeding without a title is a 400.
