@@ -7,7 +7,7 @@ var Version = "dev"
 
 // Build is the web-UI build number — the third component of 1.0.x — surfaced in
 // the UI footer and by `pbccreate version` (see docs/SPEC.md §11).
-var Build = "1"
+var Build = "2"
 
 // String returns a human-readable version string, e.g. "0.1.0 (build 3)".
 func String() string {
