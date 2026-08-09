@@ -151,6 +151,13 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	assets, err := store.ListMediaAssets(r.Context(), s.db, item.ID)
+	if err != nil {
+		s.log.Error("list media assets", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
 	data := map[string]any{
 		"Title":               item.Title,
 		"Build":               buildinfo.Build,
@@ -162,6 +169,9 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		"OutlineTotalSeconds": total,
 		"Shots":               shots,
 		"ShotStatuses":        store.ShotStatuses,
+		"Media":               assets,
+		"MediaStatuses":       store.MediaStatuses,
+		"MediaKinds":          store.MediaKinds,
 	}
 	if err := s.tmpl.render(w, http.StatusOK, "content_detail.html.tmpl", data); err != nil {
 		s.log.Error("render content detail", "err", err)

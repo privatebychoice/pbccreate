@@ -14,6 +14,24 @@ import (
 var funcMap = template.FuncMap{
 	"humanize": humanize,
 	"duration": formatDuration,
+	"filesize": formatFileSize,
+}
+
+// formatFileSize renders a byte count as a human-readable size, or "—" if unknown.
+func formatFileSize(bytes int64) string {
+	if bytes <= 0 {
+		return "—"
+	}
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %ciB", float64(bytes)/float64(div), "KMGTPE"[exp])
 }
 
 // formatDuration renders a whole-second count as "Ns" or "Mm SSs".

@@ -173,5 +173,92 @@
   </form>
 </section>
 
-<p class="muted">Thumbnails, media, and more attach here in later slices.</p>
+<section aria-labelledby="media-heading">
+  <div class="seg-head">
+    <h2 id="media-heading">Media</h2>
+    {{if .Media}}
+    <form method="post" action="/content/{{.Item.ID}}/media/verify" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <button type="submit">Verify files</button>
+    </form>
+    {{end}}
+  </div>
+
+  {{if .Media}}
+  <table>
+    <thead>
+      <tr><th scope="col">File</th><th scope="col">Kind</th><th scope="col">Size</th><th scope="col">Status</th><th scope="col">Actions</th></tr>
+    </thead>
+    <tbody>
+      {{range .Media}}
+      <tr{{if not .Present}} class="missing"{{end}}>
+        <td>
+          {{.Filename}}
+          {{if not .Present}}<span class="badge-missing" title="{{.Path}}">missing</span>{{end}}
+          <div class="muted path">{{.Path}}</div>
+        </td>
+        <td>{{humanize .Kind}}</td>
+        <td>{{filesize .SizeBytes}}</td>
+        <td>
+          <form method="post" action="/content/{{$.Item.ID}}/media/{{.ID}}/status" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <label class="sr-only" for="media-status-{{.ID}}">Status</label>
+            <select id="media-status-{{.ID}}" name="status">
+              {{$cur := .Status}}
+              {{range $.MediaStatuses}}<option value="{{.}}"{{if eq . $cur}} selected{{end}}>{{humanize .}}</option>{{end}}
+            </select>
+            <button type="submit">Set</button>
+          </form>
+        </td>
+        <td>
+          <form method="post" action="/content/{{$.Item.ID}}/media/{{.ID}}/delete" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" aria-label="Remove '{{.Filename}}' from catalogue">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p>No media catalogued yet. Add a file below.</p>
+  {{end}}
+
+  <form method="post" action="/content/{{.Item.ID}}/media" class="stack">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <p>
+      <label for="media-path">File path <span class="muted">(absolute, within a media root)</span></label>
+      <input id="media-path" name="path" required maxlength="1000" autocomplete="off" spellcheck="false">
+    </p>
+    <p>
+      <label for="media-kind">Kind <span class="muted">(auto-detected if blank)</span></label>
+      <select id="media-kind" name="kind">
+        <option value="">— auto —</option>
+        {{range .MediaKinds}}<option value="{{.}}">{{humanize .}}</option>{{end}}
+      </select>
+    </p>
+    <p>
+      <label for="media-status-new">Status</label>
+      <select id="media-status-new" name="status">
+        {{range .MediaStatuses}}<option value="{{.}}"{{if eq . "recorded"}} selected{{end}}>{{humanize .}}</option>{{end}}
+      </select>
+    </p>
+    {{if .Shots}}
+    <p>
+      <label for="media-shot">Shot <span class="muted">(optional)</span></label>
+      <select id="media-shot" name="shot_id">
+        <option value="">— none —</option>
+        {{range .Shots}}<option value="{{.ID}}">{{.Description}}</option>{{end}}
+      </select>
+    </p>
+    {{end}}
+    <p>
+      <label for="media-notes">Notes</label>
+      <textarea id="media-notes" name="notes" rows="2" autocomplete="off"></textarea>
+    </p>
+    <p><button type="submit">Add media</button></p>
+  </form>
+</section>
+
+<p class="muted">Thumbnails, descriptions, and more attach here in later slices.</p>
 {{end}}
