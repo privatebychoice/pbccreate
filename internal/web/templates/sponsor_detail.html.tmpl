@@ -1,0 +1,60 @@
+{{define "content"}}
+<p><a href="/sponsors">← Back to sponsors</a></p>
+
+<h1>{{.Sponsor.Name}}</h1>
+
+{{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+
+<form method="post" action="/sponsors/{{.Sponsor.ID}}" class="stack">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <p>
+    <label for="name">Name</label>
+    <input id="name" name="name" required maxlength="200" value="{{.Sponsor.Name}}" autocomplete="off">
+  </p>
+  <p>
+    <label for="contact">Contact</label>
+    <input id="contact" name="contact" maxlength="200" value="{{.Sponsor.Contact}}" autocomplete="off">
+  </p>
+  <p>
+    <label for="notes">Notes</label>
+    <textarea id="notes" name="notes" rows="2" autocomplete="off">{{.Sponsor.Notes}}</textarea>
+  </p>
+  <p><button type="submit">Save sponsor</button></p>
+</form>
+
+<form method="post" action="/sponsors/{{.Sponsor.ID}}/delete" class="inline-form">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <button type="submit">Delete sponsor</button>
+</form>
+
+<h2>Campaigns</h2>
+{{if .Campaigns}}
+<table>
+  <thead>
+    <tr><th scope="col">Name</th><th scope="col">Dates</th><th scope="col">Promo</th><th scope="col">Invoice</th><th scope="col">Payment</th></tr>
+  </thead>
+  <tbody>
+    {{range .Campaigns}}
+    <tr>
+      <td><a href="/sponsors/{{.SponsorID}}/campaigns/{{.ID}}">{{.Name}}</a></td>
+      <td>{{.StartsOn}}{{if .EndsOn}} – {{.EndsOn}}{{end}}</td>
+      <td>{{.PromoCode}}</td>
+      <td>{{humanize .InvoiceStatus}}</td>
+      <td>{{humanize .PaymentStatus}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{else}}
+<p>No campaigns yet.</p>
+{{end}}
+
+<form method="post" action="/sponsors/{{.Sponsor.ID}}/campaigns" class="stack">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <p>
+    <label for="campaign-name">New campaign name</label>
+    <input id="campaign-name" name="name" required maxlength="200" autocomplete="off">
+  </p>
+  <p><button type="submit">Add campaign</button></p>
+</form>
+{{end}}

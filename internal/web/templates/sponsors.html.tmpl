@@ -1,0 +1,40 @@
+{{define "content"}}
+<h1>Sponsors</h1>
+
+{{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+
+<form method="post" action="/sponsors" class="stack">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <p>
+    <label for="name">Name</label>
+    <input id="name" name="name" required maxlength="200" autocomplete="off">
+  </p>
+  <p>
+    <label for="contact">Contact</label>
+    <input id="contact" name="contact" maxlength="200" autocomplete="off">
+  </p>
+  <p>
+    <label for="notes">Notes</label>
+    <textarea id="notes" name="notes" rows="2" autocomplete="off"></textarea>
+  </p>
+  <p><button type="submit">Add sponsor</button></p>
+</form>
+
+{{if .Sponsors}}
+<table>
+  <thead>
+    <tr><th scope="col">Name</th><th scope="col">Contact</th></tr>
+  </thead>
+  <tbody>
+    {{range .Sponsors}}
+    <tr>
+      <td><a href="/sponsors/{{.ID}}">{{.Name}}</a></td>
+      <td>{{.Contact}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{else}}
+<p>No sponsors yet. Add your first one above.</p>
+{{end}}
+{{end}}

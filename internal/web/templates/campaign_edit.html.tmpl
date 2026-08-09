@@ -1,0 +1,69 @@
+{{define "content"}}
+<p><a href="/sponsors/{{.Sponsor.ID}}">← Back to {{.Sponsor.Name}}</a></p>
+
+<h1>Campaign: {{.Campaign.Name}}</h1>
+
+<form method="post" action="/sponsors/{{.Sponsor.ID}}/campaigns/{{.Campaign.ID}}" class="stack">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <p>
+    <label for="name">Name</label>
+    <input id="name" name="name" required maxlength="200" value="{{.Campaign.Name}}" autocomplete="off">
+  </p>
+  <p>
+    <label for="starts_on">Starts</label>
+    <input id="starts_on" name="starts_on" type="date" value="{{.Campaign.StartsOn}}">
+    <label for="ends_on">Ends</label>
+    <input id="ends_on" name="ends_on" type="date" value="{{.Campaign.EndsOn}}">
+  </p>
+  <p>
+    <label for="talking_points">Talking points</label>
+    <textarea id="talking_points" name="talking_points" rows="4" autocomplete="off">{{.Campaign.TalkingPoints}}</textarea>
+  </p>
+  <p>
+    <label for="promo_code">Promo code</label>
+    <input id="promo_code" name="promo_code" maxlength="120" value="{{.Campaign.PromoCode}}" autocomplete="off">
+  </p>
+  <p>
+    <label for="tracking_link">Tracking link</label>
+    <input id="tracking_link" name="tracking_link" maxlength="1000" value="{{.Campaign.TrackingLink}}" autocomplete="off" spellcheck="false">
+  </p>
+
+  <fieldset>
+    <legend>Financials (optional)</legend>
+    <p>
+      <label for="rate">Rate</label>
+      <input id="rate" name="rate" type="number" min="0" step="0.01" value="{{if .Campaign.RateSet}}{{.Campaign.Rate}}{{end}}">
+      <label for="currency">Currency</label>
+      <input id="currency" name="currency" list="currencies" maxlength="10" value="{{.Campaign.Currency}}" autocomplete="off">
+      <datalist id="currencies">
+        <option value="USD"></option>
+        <option value="EUR"></option>
+        <option value="GBP"></option>
+      </datalist>
+    </p>
+    <p>
+      <label for="invoice_status">Invoice</label>
+      <select id="invoice_status" name="invoice_status">
+        <option value="">—</option>
+        {{$inv := .Campaign.InvoiceStatus}}
+        {{range .InvoiceStatuses}}<option value="{{.}}"{{if eq . $inv}} selected{{end}}>{{humanize .}}</option>{{end}}
+      </select>
+      <label for="payment_status">Payment</label>
+      <select id="payment_status" name="payment_status">
+        <option value="">—</option>
+        {{$pay := .Campaign.PaymentStatus}}
+        {{range .PaymentStatuses}}<option value="{{.}}"{{if eq . $pay}} selected{{end}}>{{humanize .}}</option>{{end}}
+      </select>
+    </p>
+  </fieldset>
+
+  <p><button type="submit">Save campaign</button></p>
+</form>
+
+<form method="post" action="/sponsors/{{.Sponsor.ID}}/campaigns/{{.Campaign.ID}}/delete" class="inline-form">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <button type="submit">Delete campaign</button>
+</form>
+
+<p class="muted">Linking a campaign to a video (deliverable checklist, deadline, and the description sponsor blurb) arrives in a later slice.</p>
+{{end}}
