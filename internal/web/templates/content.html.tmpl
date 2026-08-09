@@ -1,0 +1,55 @@
+{{define "content"}}
+<h1>Content</h1>
+
+{{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+
+{{if .HasChannels}}
+<form method="post" action="/content" class="stack">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <p>
+    <label for="channel_id">Channel</label>
+    <select id="channel_id" name="channel_id" required>
+      {{range .Channels}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+    </select>
+  </p>
+  <p>
+    <label for="type">Type</label>
+    <select id="type" name="type" required>
+      {{range .Types}}<option value="{{.}}">{{humanize .}}</option>{{end}}
+    </select>
+  </p>
+  <p>
+    <label for="mode">Creator mode <span class="muted">(video / short)</span></label>
+    <select id="mode" name="mode">
+      <option value="">— none —</option>
+      {{range .Modes}}<option value="{{.}}">{{humanize .}}</option>{{end}}
+    </select>
+  </p>
+  <p>
+    <label for="title">Title</label>
+    <input id="title" name="title" required maxlength="300" autocomplete="off">
+  </p>
+  <p><button type="submit">Add content item</button></p>
+</form>
+{{else}}
+<p>Create a <a href="/channels">channel</a> first, then you can add content items.</p>
+{{end}}
+
+<section aria-label="Pipeline board">
+  <div class="board">
+    {{range .Columns}}
+    <div class="board-col">
+      <h2>{{humanize .Status}} <span class="count">{{len .Items}}</span></h2>
+      {{range .Items}}
+      <article class="card">
+        <strong>{{.Title}}</strong>
+        <div class="muted">{{.ChannelName}} · {{humanize .Type}}{{if .Mode}} · {{humanize .Mode}}{{end}}</div>
+      </article>
+      {{else}}
+      <p class="muted empty">—</p>
+      {{end}}
+    </div>
+    {{end}}
+  </div>
+</section>
+{{end}}

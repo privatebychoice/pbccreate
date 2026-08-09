@@ -48,6 +48,8 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /{$}", s.handleHome)
 	mux.HandleFunc("GET /channels", s.handleChannelsList)
 	mux.HandleFunc("POST /channels", s.handleChannelsCreate)
+	mux.HandleFunc("GET /content", s.handleContentBoard)
+	mux.HandleFunc("POST /content", s.handleContentCreate)
 	// Middleware order: security headers outermost, then CSRF/same-origin.
 	return s.securityHeaders(s.csrf(mux))
 }

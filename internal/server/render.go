@@ -6,7 +6,26 @@ import (
 	"html/template"
 	"io/fs"
 	"net/http"
+	"strings"
+	"unicode"
 )
+
+// funcMap holds template helpers available to every page.
+var funcMap = template.FuncMap{
+	"humanize": humanize,
+}
+
+// humanize turns a snake_case identifier into a display label, e.g.
+// "single_cam" -> "Single cam".
+func humanize(s string) string {
+	if s == "" {
+		return ""
+	}
+	s = strings.ReplaceAll(s, "_", " ")
+	r := []rune(s)
+	r[0] = unicode.ToUpper(r[0])
+	return string(r)
+}
 
 // templates holds one parsed template set per page, each combining the shared
 // base layout with that page's "content" block. Rendering per-page sets (rather
@@ -20,7 +39,7 @@ const baseLayout = "base.html.tmpl"
 // parseTemplates builds a set for every "*.html.tmpl" page except the base
 // layout, cloning the base into each.
 func parseTemplates(fsys fs.FS) (*templates, error) {
-	base, err := template.New(baseLayout).ParseFS(fsys, baseLayout)
+	base, err := template.New(baseLayout).Funcs(funcMap).ParseFS(fsys, baseLayout)
 	if err != nil {
 		return nil, fmt.Errorf("parse base layout: %w", err)
 	}
