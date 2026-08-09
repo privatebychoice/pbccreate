@@ -1,0 +1,73 @@
+{{define "content"}}
+<p><a href="/ideas">← Back to ideas</a></p>
+
+<h1>{{.Idea.Title}}</h1>
+<p class="muted">{{.Idea.ChannelName}} · score {{if gt .Idea.Score 0.0}}{{printf "%.1f" .Idea.Score}}{{else}}unscored{{end}}
+  {{if .Idea.PromotedContentItemID}} · <a href="/content/{{.Idea.PromotedContentItemID}}">promoted to a content item →</a>{{end}}</p>
+
+{{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+
+<form method="post" action="/ideas/{{.Idea.ID}}" class="stack">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <p>
+    <label for="title">Title</label>
+    <input id="title" name="title" required maxlength="300" value="{{.Idea.Title}}" autocomplete="off">
+  </p>
+  <p>
+    <label for="note">Note</label>
+    <textarea id="note" name="note" rows="3" autocomplete="off">{{.Idea.Note}}</textarea>
+  </p>
+  <p>
+    <label for="source">Source</label>
+    <input id="source" name="source" maxlength="300" value="{{.Idea.Source}}" autocomplete="off">
+  </p>
+  <div class="inline-form">
+    <span>
+      <label for="impact">Impact</label>
+      <input id="impact" name="impact" type="number" min="0" max="10" value="{{.Idea.Impact}}" inputmode="numeric">
+    </span>
+    <span>
+      <label for="confidence">Confidence</label>
+      <input id="confidence" name="confidence" type="number" min="0" max="10" value="{{.Idea.Confidence}}" inputmode="numeric">
+    </span>
+    <span>
+      <label for="effort">Effort</label>
+      <input id="effort" name="effort" type="number" min="0" max="10" value="{{.Idea.Effort}}" inputmode="numeric">
+    </span>
+  </div>
+  <p>
+    <label for="status">Status</label>
+    <select id="status" name="status">
+      {{range .Statuses}}<option value="{{.}}"{{if eq . $.Idea.Status}} selected{{end}}>{{humanize .}}</option>{{end}}
+    </select>
+  </p>
+  <p><button type="submit">Save idea</button></p>
+</form>
+
+{{if not .Idea.PromotedContentItemID}}
+<h2>Promote to a content item</h2>
+<p class="muted">Creates a content item in this channel at status “idea” and links it back here.</p>
+<form method="post" action="/ideas/{{.Idea.ID}}/promote" class="stack">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <p>
+    <label for="type">Type</label>
+    <select id="type" name="type" required>
+      {{range .Types}}<option value="{{.}}">{{humanize .}}</option>{{end}}
+    </select>
+  </p>
+  <p>
+    <label for="mode">Creator mode <span class="muted">(video / short)</span></label>
+    <select id="mode" name="mode">
+      <option value="">— none —</option>
+      {{range .Modes}}<option value="{{.}}">{{humanize .}}</option>{{end}}
+    </select>
+  </p>
+  <p><button type="submit">Promote idea</button></p>
+</form>
+{{end}}
+
+<form method="post" action="/ideas/{{.Idea.ID}}/delete" class="inline-form">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <button type="submit">Delete idea</button>
+</form>
+{{end}}
