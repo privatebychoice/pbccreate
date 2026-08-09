@@ -8,10 +8,12 @@ import (
 	"go.privatebychoice.com/pbccreate/internal/store"
 )
 
-// shotView decorates a shot with its takes for the content detail page.
+// shotView decorates a shot with its takes and a computed beat label (e.g. "2A")
+// for the content detail page.
 type shotView struct {
 	store.Shot
 	Takes []store.Take
+	Label string // beat number + letter within the beat; empty when unlinked
 }
 
 // itemAndShot parses {id} (verifying the content item) and {shotID}, confirming

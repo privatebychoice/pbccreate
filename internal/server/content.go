@@ -238,9 +238,26 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+	// Beat numbering: each outline segment is a beat, numbered by its order.
+	// beatOptions drives the shot "Beat" selects.
+	beatNum := make(map[int64]int, len(segments))
+	beatOptions := make([]beatOption, 0, len(segments))
+	for i, seg := range segments {
+		n := i + 1
+		beatNum[seg.ID] = n
+		beatOptions = append(beatOptions, beatOption{ID: seg.ID, Label: fmt.Sprintf("Beat %d — %s", n, seg.Title)})
+	}
+	// Labels: shots linked to a beat get "<beat><letter>" (e.g. 2A), the letter
+	// following their order within that beat.
+	letterByBeat := make(map[int64]int)
 	shotViews := make([]shotView, 0, len(shots))
 	for _, sh := range shots {
-		shotViews = append(shotViews, shotView{Shot: sh, Takes: takesByShot[sh.ID]})
+		sv := shotView{Shot: sh, Takes: takesByShot[sh.ID]}
+		if n, ok := beatNum[sh.OutlineSegmentID]; ok {
+			sv.Label = fmt.Sprintf("%d%s", n, shotLetter(letterByBeat[sh.OutlineSegmentID]))
+			letterByBeat[sh.OutlineSegmentID]++
+		}
+		shotViews = append(shotViews, sv)
 	}
 
 	assets, err := store.ListMediaAssets(r.Context(), s.db, item.ID)
@@ -433,6 +450,7 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		"OutlineTotalSeconds": total,
 		"Shots":               shotViews,
 		"ShotStatuses":        store.ShotStatuses,
+		"BeatOptions":         beatOptions,
 		"Media":               assets,
 		"MediaStatuses":       store.MediaStatuses,
 		"MediaKinds":          store.MediaKinds,
@@ -519,6 +537,21 @@ type outlineRow struct {
 	StartSeconds int
 }
 
+// beatOption is a selectable outline segment ("beat") for the shot forms.
+type beatOption struct {
+	ID    int64
+	Label string
+}
+
+// shotLetter maps a zero-based index to a shot letter within a beat (0→A, 25→Z),
+// falling back to a number beyond 26 shots in one beat.
+func shotLetter(i int) string {
+	if i >= 0 && i < 26 {
+		return string(rune('A' + i))
+	}
+	return strconv.Itoa(i + 1)
+}
+
 // buildOutline computes each segment's cumulative start offset and the total
 // target duration.
 func buildOutline(segs []store.OutlineSegment) (rows []outlineRow, total int) {
@@ -545,6 +578,31 @@ func (s *Server) handleOutlineAdd(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/content/"+strconv.FormatInt(id, 10), http.StatusSeeOther)
 	default:
 		s.log.Error("add outline segment", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+	}
+}
+
+// handleOutlineUpdate edits a segment's title, notes, and target seconds.
+func (s *Server) handleOutlineUpdate(w http.ResponseWriter, r *http.Request) {
+	id, ok := s.requireContentItem(w, r)
+	if !ok {
+		return
+	}
+	segID, err := strconv.ParseInt(r.PathValue("segID"), 10, 64)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	target, _ := strconv.Atoi(r.PostFormValue("target_seconds"))
+	err = store.UpdateOutlineSegment(r.Context(), s.db, segID, id, r.PostFormValue("title"), r.PostFormValue("notes"), target)
+	switch {
+	case err == nil, errors.Is(err, store.ErrInvalidSegment):
+		// Empty title is normally blocked client-side; return without changing.
+		http.Redirect(w, r, "/content/"+strconv.FormatInt(id, 10), http.StatusSeeOther)
+	case errors.Is(err, store.ErrOutlineSegmentNotFound):
+		http.NotFound(w, r)
+	default:
+		s.log.Error("update outline segment", "err", err, "id", id)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	}
 }

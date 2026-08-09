@@ -197,6 +197,25 @@
         <span class="muted">start ~{{duration .StartSeconds}} · target {{if .TargetSeconds}}{{duration .TargetSeconds}}{{else}}—{{end}}</span>
       </div>
       {{if .Notes}}<p class="muted seg-notes">{{.Notes}}</p>{{end}}
+      <details class="edit">
+        <summary>Edit</summary>
+        <form method="post" action="/content/{{$.Item.ID}}/outline/{{.ID}}/update" class="stack">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <p>
+            <label for="seg-title-{{.ID}}">Segment/Beat Title</label>
+            <input id="seg-title-{{.ID}}" name="title" value="{{.Title}}" required maxlength="200" autocomplete="off">
+          </p>
+          <p>
+            <label for="seg-notes-{{.ID}}">Notes</label>
+            <textarea id="seg-notes-{{.ID}}" name="notes" rows="2" autocomplete="off">{{.Notes}}</textarea>
+          </p>
+          <p>
+            <label for="seg-target-{{.ID}}">Target seconds</label>
+            <input id="seg-target-{{.ID}}" name="target_seconds" type="number" min="0" max="86400" value="{{.TargetSeconds}}">
+          </p>
+          <p><button type="submit">Save segment</button></p>
+        </form>
+      </details>
       <div class="card-actions">
         <form method="post" action="/content/{{$.Item.ID}}/outline/{{.ID}}/move">
           <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
@@ -223,7 +242,7 @@
   <form method="post" action="/content/{{.Item.ID}}/outline" class="stack">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <p>
-      <label for="seg-title">Segment title</label>
+      <label for="seg-title">Segment/Beat Title</label>
       <input id="seg-title" name="title" required maxlength="200" autocomplete="off">
     </p>
     <p>
@@ -246,7 +265,7 @@
     {{range .Shots}}
     <li>
       <div class="seg-head">
-        <strong>{{.Description}}</strong>
+        <strong>{{if .Label}}{{.Label}} · {{end}}{{.Description}}</strong>
         <form method="post" action="/content/{{$.Item.ID}}/shots/{{.ID}}/status" class="inline-form">
           <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
           <label class="sr-only" for="shot-status-{{.ID}}">Status</label>
@@ -305,6 +324,42 @@
         </form>
       </details>
 
+      {{$segID := .OutlineSegmentID}}
+      <details class="edit">
+        <summary>Edit</summary>
+        <form method="post" action="/content/{{$.Item.ID}}/shots/{{.ID}}/update" class="stack">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <p>
+            <label for="shot-desc-{{.ID}}">Description</label>
+            <input id="shot-desc-{{.ID}}" name="description" value="{{.Description}}" required maxlength="300" autocomplete="off">
+          </p>
+          <p>
+            <label for="shot-beat-{{.ID}}">Beat</label>
+            <select id="shot-beat-{{.ID}}" name="outline_segment_id">
+              <option value="">— no beat —</option>
+              {{range $.BeatOptions}}<option value="{{.ID}}"{{if eq .ID $segID}} selected{{end}}>{{.Label}}</option>{{end}}
+            </select>
+          </p>
+          <p>
+            <label for="shot-scene-{{.ID}}">Scene / location</label>
+            <input id="shot-scene-{{.ID}}" name="scene" value="{{.Scene}}" maxlength="120" autocomplete="off">
+          </p>
+          <p>
+            <label for="shot-framing-{{.ID}}">Framing / angle</label>
+            <input id="shot-framing-{{.ID}}" name="framing" value="{{.Framing}}" maxlength="120" autocomplete="off">
+          </p>
+          <p>
+            <label for="shot-camera-{{.ID}}">Camera <span class="muted">(multi-cam)</span></label>
+            <input id="shot-camera-{{.ID}}" name="camera" value="{{.Camera}}" maxlength="60" autocomplete="off">
+          </p>
+          <p>
+            <label for="shot-notes-{{.ID}}">Notes</label>
+            <textarea id="shot-notes-{{.ID}}" name="notes" rows="2" autocomplete="off">{{.Notes}}</textarea>
+          </p>
+          <p><button type="submit">Save shot</button></p>
+        </form>
+      </details>
+
       <div class="card-actions">
         <form method="post" action="/content/{{$.Item.ID}}/shots/{{.ID}}/move">
           <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
@@ -334,6 +389,15 @@
       <label for="shot-desc">Description</label>
       <input id="shot-desc" name="description" required maxlength="300" autocomplete="off">
     </p>
+    {{if .BeatOptions}}
+    <p>
+      <label for="shot-beat">Beat <span class="muted">(links to an outline segment)</span></label>
+      <select id="shot-beat" name="outline_segment_id">
+        <option value="">— no beat —</option>
+        {{range .BeatOptions}}<option value="{{.ID}}">{{.Label}}</option>{{end}}
+      </select>
+    </p>
+    {{end}}
     <p>
       <label for="shot-scene">Scene / location</label>
       <input id="shot-scene" name="scene" maxlength="120" autocomplete="off">
@@ -922,7 +986,7 @@
       <label for="media-shot">Shot <span class="muted">(optional)</span></label>
       <select id="media-shot" name="shot_id">
         <option value="">— none —</option>
-        {{range .Shots}}<option value="{{.ID}}">{{.Description}}</option>{{end}}
+        {{range .Shots}}<option value="{{.ID}}">{{if .Label}}{{.Label}} · {{end}}{{.Description}}</option>{{end}}
       </select>
     </p>
     {{end}}

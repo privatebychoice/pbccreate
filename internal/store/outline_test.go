@@ -39,6 +39,48 @@ func TestOutlineAddAndList(t *testing.T) {
 	}
 }
 
+func TestOutlineUpdateAndExists(t *testing.T) {
+	ctx := context.Background()
+	db := migratedTestDB(t)
+	ch, _ := CreateChannel(ctx, db, "TUL", "youtube")
+	item, _ := CreateContentItem(ctx, db, ch.ID, "video", "faceless", "Editable")
+	seg, _ := AddOutlineSegment(ctx, db, item.ID, "Hook", "old", 15)
+
+	if err := UpdateOutlineSegment(ctx, db, seg.ID, item.ID, "The Hook", "new notes", 20); err != nil {
+		t.Fatalf("UpdateOutlineSegment: %v", err)
+	}
+	segs, _ := ListOutlineSegments(ctx, db, item.ID)
+	if segs[0].Title != "The Hook" || segs[0].Notes != "new notes" || segs[0].TargetSeconds != 20 {
+		t.Fatalf("after update = %+v", segs[0])
+	}
+
+	// target <= 0 clears the target.
+	if err := UpdateOutlineSegment(ctx, db, seg.ID, item.ID, "The Hook", "", 0); err != nil {
+		t.Fatalf("UpdateOutlineSegment clear: %v", err)
+	}
+	segs, _ = ListOutlineSegments(ctx, db, item.ID)
+	if segs[0].TargetSeconds != 0 {
+		t.Errorf("target = %d, want 0 after clear", segs[0].TargetSeconds)
+	}
+
+	// Empty title rejected; cross-item update reports not found.
+	if err := UpdateOutlineSegment(ctx, db, seg.ID, item.ID, "  ", "", 0); err != ErrInvalidSegment {
+		t.Errorf("empty title err = %v, want ErrInvalidSegment", err)
+	}
+	other, _ := CreateContentItem(ctx, db, ch.ID, "video", "", "Other")
+	if err := UpdateOutlineSegment(ctx, db, seg.ID, other.ID, "X", "", 0); err != ErrOutlineSegmentNotFound {
+		t.Errorf("cross-item err = %v, want ErrOutlineSegmentNotFound", err)
+	}
+
+	// OutlineSegmentExists is scoped to the item.
+	if ok, _ := OutlineSegmentExists(ctx, db, seg.ID, item.ID); !ok {
+		t.Error("expected segment to exist for its item")
+	}
+	if ok, _ := OutlineSegmentExists(ctx, db, seg.ID, other.ID); ok {
+		t.Error("segment must not exist for a different item")
+	}
+}
+
 func TestOutlineAddValidation(t *testing.T) {
 	ctx := context.Background()
 	db := migratedTestDB(t)

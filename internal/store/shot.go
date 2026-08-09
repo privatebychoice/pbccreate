@@ -33,14 +33,17 @@ type Shot struct {
 	Camera        string
 	Status        string
 	Notes         string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	// OutlineSegmentID links the shot to an outline segment ("beat"); 0 = unlinked
+	// (SPEC §5.2/§5.3).
+	OutlineSegmentID int64
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 // ListShots returns a content item's shots in position order.
 func ListShots(ctx context.Context, db *sql.DB, contentItemID int64) ([]Shot, error) {
 	rows, err := db.QueryContext(ctx, `
-		SELECT id, content_item_id, position, description, scene, framing, camera, status, notes, created_at, updated_at
+		SELECT id, content_item_id, position, description, scene, framing, camera, status, notes, outline_segment_id, created_at, updated_at
 		FROM shots
 		WHERE content_item_id = ?
 		ORDER BY position`, contentItemID)
@@ -53,11 +56,13 @@ func ListShots(ctx context.Context, db *sql.DB, contentItemID int64) ([]Shot, er
 	for rows.Next() {
 		var (
 			s            Shot
+			seg          sql.NullInt64
 			created, upd string
 		)
-		if err := rows.Scan(&s.ID, &s.ContentItemID, &s.Position, &s.Description, &s.Scene, &s.Framing, &s.Camera, &s.Status, &s.Notes, &created, &upd); err != nil {
+		if err := rows.Scan(&s.ID, &s.ContentItemID, &s.Position, &s.Description, &s.Scene, &s.Framing, &s.Camera, &s.Status, &s.Notes, &seg, &created, &upd); err != nil {
 			return nil, fmt.Errorf("scan shot: %w", err)
 		}
+		s.OutlineSegmentID = seg.Int64
 		s.CreatedAt = parseTS(created)
 		s.UpdatedAt = parseTS(upd)
 		out = append(out, s)
@@ -85,6 +90,9 @@ func AddShot(ctx context.Context, db *sql.DB, contentItemID int64, s Shot) (Shot
 	} else if !slices.Contains(ShotStatuses, s.Status) {
 		return Shot{}, ErrInvalidShotStatus
 	}
+	if err := checkShotSegment(ctx, db, s.OutlineSegmentID, contentItemID); err != nil {
+		return Shot{}, err
+	}
 
 	var pos int
 	if err := db.QueryRowContext(ctx,
@@ -96,9 +104,9 @@ func AddShot(ctx context.Context, db *sql.DB, contentItemID int64, s Shot) (Shot
 	now := time.Now().UTC().Truncate(time.Second)
 	ts := now.Format(time.RFC3339)
 	res, err := db.ExecContext(ctx, `
-		INSERT INTO shots (content_item_id, position, description, scene, framing, camera, status, notes, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		contentItemID, pos, s.Description, s.Scene, s.Framing, s.Camera, s.Status, s.Notes, ts, ts)
+		INSERT INTO shots (content_item_id, position, description, scene, framing, camera, status, notes, outline_segment_id, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		contentItemID, pos, s.Description, s.Scene, s.Framing, s.Camera, s.Status, s.Notes, nullableID(s.OutlineSegmentID), ts, ts)
 	if err != nil {
 		return Shot{}, fmt.Errorf("insert shot: %w", err)
 	}
@@ -112,6 +120,51 @@ func AddShot(ctx context.Context, db *sql.DB, contentItemID int64, s Shot) (Shot
 	s.CreatedAt = now
 	s.UpdatedAt = now
 	return s, nil
+}
+
+// UpdateShot edits a shot's descriptive fields and its outline-segment (beat)
+// link, scoped to its content item. Status and position are managed separately.
+// Description is required; a non-zero OutlineSegmentID must belong to the same
+// item (0 unlinks the shot from any beat).
+func UpdateShot(ctx context.Context, db *sql.DB, id, contentItemID int64, s Shot) error {
+	s.Description = strings.TrimSpace(s.Description)
+	s.Scene = strings.TrimSpace(s.Scene)
+	s.Framing = strings.TrimSpace(s.Framing)
+	s.Camera = strings.TrimSpace(s.Camera)
+	s.Notes = strings.TrimSpace(s.Notes)
+	if s.Description == "" {
+		return ErrInvalidShot
+	}
+	if err := checkShotSegment(ctx, db, s.OutlineSegmentID, contentItemID); err != nil {
+		return err
+	}
+
+	ts := time.Now().UTC().Truncate(time.Second).Format(time.RFC3339)
+	res, err := db.ExecContext(ctx, `
+		UPDATE shots
+		SET description = ?, scene = ?, framing = ?, camera = ?, notes = ?, outline_segment_id = ?, updated_at = ?
+		WHERE id = ? AND content_item_id = ?`,
+		s.Description, s.Scene, s.Framing, s.Camera, s.Notes, nullableID(s.OutlineSegmentID), ts, id, contentItemID)
+	if err != nil {
+		return fmt.Errorf("update shot: %w", err)
+	}
+	return checkAffected(res, ErrShotNotFound)
+}
+
+// checkShotSegment verifies a non-zero beat link points at a segment owned by the
+// same content item; a zero link is always valid (unlinked).
+func checkShotSegment(ctx context.Context, db *sql.DB, segmentID, contentItemID int64) error {
+	if segmentID == 0 {
+		return nil
+	}
+	ok, err := OutlineSegmentExists(ctx, db, segmentID, contentItemID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return ErrOutlineSegmentNotFound
+	}
+	return nil
 }
 
 // UpdateShotStatus sets a shot's status, scoped to its content item.

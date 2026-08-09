@@ -108,6 +108,43 @@ func AddOutlineSegment(ctx context.Context, db *sql.DB, contentItemID int64, tit
 	return seg, nil
 }
 
+// UpdateOutlineSegment edits a segment's title, notes, and target seconds,
+// scoped to its content item. Title is required; targetSeconds <= 0 clears the
+// target (NULL).
+func UpdateOutlineSegment(ctx context.Context, db *sql.DB, id, contentItemID int64, title, notes string, targetSeconds int) error {
+	title = strings.TrimSpace(title)
+	notes = strings.TrimSpace(notes)
+	if title == "" {
+		return ErrInvalidSegment
+	}
+	var target any
+	if targetSeconds > 0 {
+		target = targetSeconds
+	}
+	ts := time.Now().UTC().Truncate(time.Second).Format(time.RFC3339)
+	res, err := db.ExecContext(ctx, `
+		UPDATE outline_segments
+		SET title = ?, notes = ?, target_seconds = ?, updated_at = ?
+		WHERE id = ? AND content_item_id = ?`,
+		title, notes, target, ts, id, contentItemID)
+	if err != nil {
+		return fmt.Errorf("update outline segment: %w", err)
+	}
+	return checkAffected(res, ErrOutlineSegmentNotFound)
+}
+
+// OutlineSegmentExists reports whether a segment with the given id belongs to the
+// content item (used to validate shot->beat links).
+func OutlineSegmentExists(ctx context.Context, db *sql.DB, id, contentItemID int64) (bool, error) {
+	var n int
+	if err := db.QueryRowContext(ctx,
+		`SELECT COUNT(1) FROM outline_segments WHERE id = ? AND content_item_id = ?`,
+		id, contentItemID).Scan(&n); err != nil {
+		return false, fmt.Errorf("outline segment exists: %w", err)
+	}
+	return n > 0, nil
+}
+
 // DeleteOutlineSegment removes a segment scoped to its content item. Returns
 // ErrOutlineSegmentNotFound if no row matched.
 func DeleteOutlineSegment(ctx context.Context, db *sql.DB, id, contentItemID int64) error {

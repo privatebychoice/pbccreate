@@ -15,22 +15,42 @@ func (s *Server) handleShotAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	shot := store.Shot{
-		Description: r.PostFormValue("description"),
-		Scene:       r.PostFormValue("scene"),
-		Framing:     r.PostFormValue("framing"),
-		Camera:      r.PostFormValue("camera"),
-		Status:      r.PostFormValue("status"),
-		Notes:       r.PostFormValue("notes"),
+		Description:      r.PostFormValue("description"),
+		Scene:            r.PostFormValue("scene"),
+		Framing:          r.PostFormValue("framing"),
+		Camera:           r.PostFormValue("camera"),
+		Status:           r.PostFormValue("status"),
+		Notes:            r.PostFormValue("notes"),
+		OutlineSegmentID: formID(r, "outline_segment_id"),
 	}
 	_, err := store.AddShot(r.Context(), s.db, id, shot)
 	switch {
 	case err == nil, errors.Is(err, store.ErrInvalidShot), errors.Is(err, store.ErrInvalidShotStatus):
 		// Invalid input is normally blocked client-side; just return to the page.
 		s.redirectToItem(w, r, id)
+	case errors.Is(err, store.ErrOutlineSegmentNotFound):
+		http.Error(w, "unknown beat", http.StatusBadRequest)
 	default:
 		s.log.Error("add shot", "err", err, "id", id)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	}
+}
+
+// handleShotUpdate edits a shot's descriptive fields and its beat link.
+func (s *Server) handleShotUpdate(w http.ResponseWriter, r *http.Request) {
+	id, shotID, ok := s.requireContentItemAndSub(w, r, "shotID")
+	if !ok {
+		return
+	}
+	shot := store.Shot{
+		Description:      r.PostFormValue("description"),
+		Scene:            r.PostFormValue("scene"),
+		Framing:          r.PostFormValue("framing"),
+		Camera:           r.PostFormValue("camera"),
+		Notes:            r.PostFormValue("notes"),
+		OutlineSegmentID: formID(r, "outline_segment_id"),
+	}
+	s.finishShotAction(w, r, id, store.UpdateShot(r.Context(), s.db, shotID, id, shot))
 }
 
 // handleShotStatus updates a shot's production status.
@@ -69,12 +89,19 @@ func (s *Server) finishShotAction(w http.ResponseWriter, r *http.Request, id int
 		s.redirectToItem(w, r, id)
 	case errors.Is(err, store.ErrShotNotFound):
 		http.NotFound(w, r)
-	case errors.Is(err, store.ErrInvalidShotStatus), errors.Is(err, store.ErrInvalidMove):
+	case errors.Is(err, store.ErrInvalidShotStatus), errors.Is(err, store.ErrInvalidMove),
+		errors.Is(err, store.ErrInvalidShot), errors.Is(err, store.ErrOutlineSegmentNotFound):
 		http.Error(w, "invalid request", http.StatusBadRequest)
 	default:
 		s.log.Error("shot action", "err", err, "id", id)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	}
+}
+
+// formID parses an optional numeric form field; missing/blank/invalid yields 0.
+func formID(r *http.Request, name string) int64 {
+	v, _ := strconv.ParseInt(r.PostFormValue(name), 10, 64)
+	return v
 }
 
 // requireContentItemAndSub parses the {id} path value (verifying the item
