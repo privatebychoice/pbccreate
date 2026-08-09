@@ -1,0 +1,53 @@
+{{define "content"}}
+<p><a href="/assets">← Back to assets</a></p>
+
+<h1>{{.Asset.Name}}</h1>
+<p class="muted">{{humanize .Asset.Kind}}</p>
+
+{{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+
+<form method="post" action="/assets/{{.Asset.ID}}" class="stack">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <p>
+    <label for="name">Name</label>
+    <input id="name" name="name" required maxlength="200" value="{{.Asset.Name}}" autocomplete="off">
+  </p>
+  <p>
+    <label for="kind">Kind</label>
+    <select id="kind" name="kind">
+      {{range .Kinds}}<option value="{{.}}"{{if eq . $.Asset.Kind}} selected{{end}}>{{humanize .}}</option>{{end}}
+    </select>
+  </p>
+  <p>
+    <label for="path">Path <span class="muted">(reference only)</span></label>
+    <input id="path" name="path" maxlength="1000" value="{{.Asset.Path}}" autocomplete="off" spellcheck="false">
+  </p>
+  <p>
+    <label for="tags">Tags <span class="muted">(comma-separated)</span></label>
+    <input id="tags" name="tags" maxlength="300" value="{{.Asset.Tags}}" autocomplete="off">
+  </p>
+  <p>
+    <label for="license">License</label>
+    <input id="license" name="license" maxlength="200" value="{{.Asset.License}}" autocomplete="off">
+  </p>
+  {{if .Providers}}
+  <p>
+    <label for="provider_id">Provider</label>
+    <select id="provider_id" name="provider_id">
+      <option value="">— none —</option>
+      {{range .Providers}}<option value="{{.ID}}"{{if eq .ID $.Asset.ProviderID}} selected{{end}}>{{.Name}}</option>{{end}}
+    </select>
+  </p>
+  {{end}}
+  <p>
+    <label for="notes">Notes</label>
+    <textarea id="notes" name="notes" rows="3" autocomplete="off">{{.Asset.Notes}}</textarea>
+  </p>
+  <p><button type="submit">Save asset</button></p>
+</form>
+
+<form method="post" action="/assets/{{.Asset.ID}}/delete" class="inline-form">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <button type="submit">Delete asset</button>
+</form>
+{{end}}

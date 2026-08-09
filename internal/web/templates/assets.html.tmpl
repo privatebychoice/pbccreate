@@ -1,0 +1,80 @@
+{{define "content"}}
+<h1>Asset library <span class="muted">(cross-project)</span></h1>
+<p class="muted">A bank of reusable owned assets — B-roll, music, SFX, graphics, brand elements — findable across all projects. Paths are catalogued for recall; the app never opens them.</p>
+
+{{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+
+<form method="get" action="/assets" class="inline-form">
+  <label class="sr-only" for="q">Search</label>
+  <input id="q" name="q" value="{{.Query}}" placeholder="Search name, tags, path, notes" autocomplete="off">
+  <label class="sr-only" for="kind-filter">Kind</label>
+  <select id="kind-filter" name="kind">
+    <option value="">All kinds</option>
+    {{range .Kinds}}<option value="{{.}}"{{if eq . $.KindF}} selected{{end}}>{{humanize .}}</option>{{end}}
+  </select>
+  <button type="submit">Search</button>
+  {{if or .Query .KindF}}<a href="/assets">Clear</a>{{end}}
+</form>
+
+<form method="post" action="/assets" class="stack">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <p>
+    <label for="name">Name</label>
+    <input id="name" name="name" required maxlength="200" autocomplete="off">
+  </p>
+  <p>
+    <label for="kind">Kind</label>
+    <select id="kind" name="kind">
+      {{range .Kinds}}<option value="{{.}}">{{humanize .}}</option>{{end}}
+    </select>
+  </p>
+  <p>
+    <label for="path">Path <span class="muted">(reference only)</span></label>
+    <input id="path" name="path" maxlength="1000" autocomplete="off" spellcheck="false">
+  </p>
+  <p>
+    <label for="tags">Tags <span class="muted">(comma-separated)</span></label>
+    <input id="tags" name="tags" maxlength="300" autocomplete="off">
+  </p>
+  <p>
+    <label for="license">License</label>
+    <input id="license" name="license" maxlength="200" autocomplete="off">
+  </p>
+  {{if .Providers}}
+  <p>
+    <label for="provider_id">Provider <span class="muted">(optional, §5.20)</span></label>
+    <select id="provider_id" name="provider_id">
+      <option value="">— none —</option>
+      {{range .Providers}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+    </select>
+  </p>
+  {{end}}
+  <p>
+    <label for="notes">Notes</label>
+    <textarea id="notes" name="notes" rows="2" autocomplete="off"></textarea>
+  </p>
+  <p><button type="submit">Add asset</button></p>
+</form>
+
+{{if .Assets}}
+<table>
+  <thead>
+    <tr><th scope="col">Name</th><th scope="col">Kind</th><th scope="col">Tags</th><th scope="col">License</th><th scope="col">Provider</th></tr>
+  </thead>
+  <tbody>
+    {{range .Assets}}
+    <tr>
+      <td><a href="/assets/{{.ID}}">{{.Name}}</a>
+        {{if .Path}}<div class="muted path">{{.Path}}</div>{{end}}</td>
+      <td>{{humanize .Kind}}</td>
+      <td class="muted">{{.Tags}}</td>
+      <td>{{if .License}}{{.License}}{{else}}<span class="muted">—</span>{{end}}</td>
+      <td>{{if .ProviderName}}{{.ProviderName}}{{else}}<span class="muted">—</span>{{end}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{else}}
+<p>{{if or .Query .KindF}}No assets match.{{else}}No assets yet. Add your first reusable asset above.{{end}}</p>
+{{end}}
+{{end}}
