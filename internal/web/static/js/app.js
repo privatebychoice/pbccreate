@@ -26,3 +26,13 @@ document.addEventListener("click", function (e) {
     done();
   }
 });
+
+// Confirm-before-submit: a form with [data-confirm="message"] asks first. Keeps
+// the warning CSP-safe (no inline onsubmit handlers).
+document.addEventListener("submit", function (e) {
+  const form = e.target.closest("form[data-confirm]");
+  if (!form) return;
+  if (!window.confirm(form.getAttribute("data-confirm"))) {
+    e.preventDefault();
+  }
+});

@@ -180,6 +180,23 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Blog repurposing links (§5.9): for a source item, the derived blog (if any);
+	// for a blog item, the source it was derived from (if any).
+	var derivedBlogID, blogSourceID int64
+	if item.Type == "blog" {
+		if blogSourceID, err = store.DerivedSourceID(r.Context(), s.db, item.ID); err != nil {
+			s.log.Error("derived source lookup", "err", err, "id", id)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		if derivedBlogID, err = store.DerivedBlogID(r.Context(), s.db, item.ID); err != nil {
+			s.log.Error("derived blog lookup", "err", err, "id", id)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+	}
+
 	titleCandidates, err := store.ListTitleCandidates(r.Context(), s.db, item.ID)
 	if err != nil {
 		s.log.Error("list title candidates", "err", err, "id", id)
@@ -408,6 +425,8 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		"ChecklistReady":      checklistReady,
 		"TitleCandidates":     titleCandidates,
 		"Swipe":               swipe,
+		"DerivedBlogID":       derivedBlogID,
+		"BlogSourceID":        blogSourceID,
 		"Statuses":            store.ContentStatuses,
 		"Script":              script,
 		"Segments":            rows,

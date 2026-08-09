@@ -20,6 +20,35 @@
   <dt>Updated</dt><dd>{{if not .Item.UpdatedAt.IsZero}}{{.Item.UpdatedAt.Format "2006-01-02 15:04"}}{{end}}</dd>
 </dl>
 
+{{if eq .Item.Type "blog"}}
+<section aria-labelledby="blog-heading">
+  <h2 id="blog-heading">Blog <span class="muted">(Markdown export)</span></h2>
+  {{if .BlogSourceID}}<p class="muted">Derived from <a href="/content/{{.BlogSourceID}}">the source video</a>. The Script section below is the blog body — edit it independently.</p>{{end}}
+  <div class="inline-form">
+    <a href="/content/{{.Item.ID}}/blog.md"><button type="button">Download Markdown</button></a>
+    {{if .BlogSourceID}}
+    <form method="post" action="/content/{{.Item.ID}}/reseed" class="inline-form" data-confirm="Re-seed overwrites the blog body, links, and tags from the source. Continue?">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <button type="submit">Re-seed from source (overwrites)</button>
+    </form>
+    {{end}}
+  </div>
+</section>
+{{else}}
+<section aria-labelledby="repurpose-heading">
+  <h2 id="repurpose-heading">Repurpose</h2>
+  {{if .DerivedBlogID}}
+  <p>A blog draft was derived from this item: <a href="/content/{{.DerivedBlogID}}">open the blog →</a></p>
+  {{else}}
+  <form method="post" action="/content/{{.Item.ID}}/repurpose" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <button type="submit">Repurpose to blog</button>
+    <span class="muted">Creates a linked blog draft seeded from this outline, script, links, and tags.</span>
+  </form>
+  {{end}}
+</section>
+{{end}}
+
 <section aria-labelledby="checklist-heading">
   <h2 id="checklist-heading">Pre-publish checklist
     {{if .ChecklistReady}}<span class="badge-ready">Ready</span>{{else}}<span class="badge-blocked">Not ready</span>{{end}}
