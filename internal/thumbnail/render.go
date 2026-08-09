@@ -4,17 +4,22 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"image/draw"
 	"strconv"
 	"strings"
 	"sync"
 
+	"golang.org/x/image/draw"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/gofont/gobold"
 	"golang.org/x/image/font/gofont/goregular"
 	"golang.org/x/image/font/opentype"
 	"golang.org/x/image/math/fixed"
 )
+
+// ImageResolver returns the decoded image for an image layer's ImageID, or nil
+// if unavailable. The server supplies one that reads uploaded files; text-only
+// renders may pass nil.
+type ImageResolver func(imageID int64) image.Image
 
 var (
 	fontOnce             sync.Once
@@ -33,8 +38,9 @@ func loadFonts() {
 }
 
 // Render draws the canvas to a fixed 1280x720 RGBA image. It is deterministic:
-// the same canvas always yields the same pixels (SPEC §5.5, §6).
-func Render(c Canvas) (image.Image, error) {
+// the same canvas (and images) always yields the same pixels (SPEC §5.5, §6).
+// resolve supplies images for image layers; pass nil for text-only canvases.
+func Render(c Canvas, resolve ImageResolver) (image.Image, error) {
 	loadFonts()
 	if fontErr != nil {
 		return nil, fmt.Errorf("load fonts: %w", fontErr)
@@ -45,14 +51,58 @@ func Render(c Canvas) (image.Image, error) {
 	draw.Draw(img, img.Bounds(), &image.Uniform{C: bg}, image.Point{}, draw.Src)
 
 	for _, l := range c.Layers {
-		if l.Type != "text" || strings.TrimSpace(l.Text) == "" {
-			continue
-		}
-		if err := drawText(img, l); err != nil {
-			return nil, err
+		switch l.Type {
+		case "text":
+			if strings.TrimSpace(l.Text) == "" {
+				continue
+			}
+			if err := drawText(img, l); err != nil {
+				return nil, err
+			}
+		case "image":
+			if resolve != nil {
+				drawImage(img, l, resolve)
+			}
 		}
 	}
 	return img, nil
+}
+
+// drawImage composites an image layer, scaling it to the layer's W×H (or its
+// natural size) with alpha blending.
+func drawImage(dst *image.RGBA, l Layer, resolve ImageResolver) {
+	src := resolve(l.ImageID)
+	if src == nil {
+		return
+	}
+	w, h := l.W, l.H
+	if w <= 0 || h <= 0 {
+		b := src.Bounds()
+		w, h = b.Dx(), b.Dy()
+	}
+	rect := image.Rect(l.X, l.Y, l.X+w, l.Y+h)
+	draw.CatmullRom.Scale(dst, rect, src, src.Bounds(), draw.Over, nil)
+}
+
+// Fit downscales src so neither side exceeds maxDim, preserving aspect ratio;
+// smaller images are returned unchanged.
+func Fit(src image.Image, maxDim int) image.Image {
+	b := src.Bounds()
+	w, h := b.Dx(), b.Dy()
+	if w <= maxDim && h <= maxDim {
+		return src
+	}
+	scale := float64(maxDim) / float64(max(w, h))
+	nw, nh := int(float64(w)*scale), int(float64(h)*scale)
+	if nw < 1 {
+		nw = 1
+	}
+	if nh < 1 {
+		nh = 1
+	}
+	dst := image.NewRGBA(image.Rect(0, 0, nw, nh))
+	draw.CatmullRom.Scale(dst, dst.Bounds(), src, b, draw.Src, nil)
+	return dst
 }
 
 func drawText(img *image.RGBA, l Layer) error {

@@ -1,7 +1,7 @@
 // pbccreate thumbnail canvas editor — self-hosted vanilla JS, no dependencies.
-// Renders the canvas model (background + text layers), supports select/drag and
-// a properties panel, and serializes canvas_json back into the save form. The
-// server-side render (render.png) remains the authoritative export.
+// Renders the canvas model (background + text/image layers), supports
+// select/drag and a properties panel, and serializes canvas_json into the save
+// form. The server-side render (render.png) remains the authoritative export.
 "use strict";
 
 (function () {
@@ -10,6 +10,7 @@
 
   const ctx = canvas.getContext("2d");
   const jsonField = document.getElementById("canvas-json-field");
+  const imageBase = canvas.dataset.imageBase || "";
   const el = {
     bg: document.getElementById("ctl-bg"),
     add: document.getElementById("ctl-add"),
@@ -17,14 +18,18 @@
     color: document.getElementById("ctl-color"),
     size: document.getElementById("ctl-size"),
     bold: document.getElementById("ctl-bold"),
+    imgWidth: document.getElementById("ctl-img-width"),
     del: document.getElementById("ctl-del"),
     guides: document.getElementById("ctl-guides"),
+    textControls: document.getElementById("text-controls"),
+    imageControls: document.getElementById("image-controls"),
   };
 
   let state = parseCanvas();
   let selected = null;
   let drag = null;
   let guidesOn = false;
+  const imgCache = {}; // imageId -> HTMLImageElement
 
   function parseCanvas() {
     try {
@@ -49,12 +54,26 @@
     jsonField.value = JSON.stringify(state);
   }
 
-  function measure(l) {
+  function imageFor(id) {
+    if (imgCache[id]) return imgCache[id];
+    const im = new Image();
+    im.onload = draw;
+    im.src = imageBase + id;
+    imgCache[id] = im;
+    return im;
+  }
+
+  function textBox(l) {
     ctx.font = fontSpec(l);
     const lines = String(l.text || "").split("\n");
     let w = 0;
     for (const line of lines) w = Math.max(w, ctx.measureText(line).width);
     return { w: w, h: lines.length * lineHeight(l.fontSize), lines: lines };
+  }
+
+  function bbox(l) {
+    if (l.type === "image") return { w: l.w || 0, h: l.h || 0 };
+    return textBox(l);
   }
 
   function draw() {
@@ -64,19 +83,26 @@
     ctx.textBaseline = "top";
 
     state.layers.forEach(function (l, i) {
-      if (l.type !== "text") return;
-      const m = measure(l);
-      ctx.font = fontSpec(l);
-      ctx.fillStyle = l.color || "#ffffff";
-      m.lines.forEach(function (line, li) {
-        ctx.fillText(line, l.x || 0, (l.y || 0) + li * lineHeight(l.fontSize));
-      });
+      if (l.type === "text") {
+        const t = textBox(l);
+        ctx.font = fontSpec(l);
+        ctx.fillStyle = l.color || "#ffffff";
+        t.lines.forEach(function (line, li) {
+          ctx.fillText(line, l.x || 0, (l.y || 0) + li * lineHeight(l.fontSize));
+        });
+      } else if (l.type === "image") {
+        const im = imageFor(l.imageId);
+        if (im.complete && im.naturalWidth > 0) {
+          ctx.drawImage(im, l.x || 0, l.y || 0, l.w || im.naturalWidth, l.h || im.naturalHeight);
+        }
+      }
       if (i === selected) {
+        const b = bbox(l);
         ctx.save();
         ctx.strokeStyle = "#5b9dff";
         ctx.lineWidth = 3;
         ctx.setLineDash([10, 6]);
-        ctx.strokeRect((l.x || 0) - 6, (l.y || 0) - 6, m.w + 12, m.h + 12);
+        ctx.strokeRect((l.x || 0) - 6, (l.y || 0) - 6, b.w + 12, b.h + 12);
         ctx.restore();
       }
     });
@@ -89,9 +115,8 @@
     ctx.strokeStyle = "rgba(91,157,255,0.8)";
     ctx.lineWidth = 2;
     ctx.setLineDash([12, 8]);
-    const m = Math.round(canvas.width * 0.05); // ~title-safe margin
+    const m = Math.round(canvas.width * 0.05);
     ctx.strokeRect(m, m, canvas.width - 2 * m, canvas.height - 2 * m);
-    // Approximate YouTube duration-badge zone (bottom-right).
     ctx.setLineDash([]);
     ctx.fillStyle = "rgba(0,0,0,0.4)";
     const bw = 180, bh = 64, bm = 24;
@@ -110,10 +135,9 @@
   function hitTest(x, y) {
     for (let i = state.layers.length - 1; i >= 0; i--) {
       const l = state.layers[i];
-      if (l.type !== "text") continue;
-      const m = measure(l);
+      const b = bbox(l);
       const lx = l.x || 0, ly = l.y || 0;
-      if (x >= lx - 6 && x <= lx + m.w + 6 && y >= ly - 6 && y <= ly + m.h + 6) return i;
+      if (x >= lx - 6 && x <= lx + b.w + 6 && y >= ly - 6 && y <= ly + b.h + 6) return i;
     }
     return null;
   }
@@ -157,7 +181,7 @@
   [el.text, el.color, el.size, el.bold].forEach(function (input) {
     input.addEventListener("input", function () {
       const l = selectedLayer();
-      if (!l) return;
+      if (!l || l.type !== "text") return;
       l.text = el.text.value;
       l.color = el.color.value;
       l.fontSize = clamp(parseInt(el.size.value, 10) || 100, 8, 400);
@@ -165,6 +189,16 @@
       sync();
       draw();
     });
+  });
+
+  el.imgWidth.addEventListener("input", function () {
+    const l = selectedLayer();
+    if (!l || l.type !== "image") return;
+    const aspect = l.w > 0 ? l.h / l.w : 1;
+    l.w = clamp(parseInt(el.imgWidth.value, 10) || 1, 8, canvas.width);
+    l.h = Math.max(1, Math.round(l.w * aspect));
+    sync();
+    draw();
   });
 
   el.add.addEventListener("click", function () {
@@ -189,19 +223,26 @@
     draw();
   });
 
+  function show(node, on) {
+    node.style.display = on ? "" : "none";
+  }
+
   function refreshPanel() {
     const l = selectedLayer();
-    const has = !!l;
-    [el.text, el.color, el.size, el.bold, el.del].forEach(function (i) {
-      i.disabled = !has;
-    });
-    if (has) {
+    el.bg.value = state.background;
+    el.del.disabled = !l;
+    const isText = !!l && l.type === "text";
+    const isImage = !!l && l.type === "image";
+    show(el.textControls, isText);
+    show(el.imageControls, isImage);
+    if (isText) {
       el.text.value = l.text || "";
       el.color.value = l.color || "#ffffff";
       el.size.value = l.fontSize || 100;
       el.bold.checked = !!l.bold;
+    } else if (isImage) {
+      el.imgWidth.value = l.w || 0;
     }
-    el.bg.value = state.background;
   }
 
   // --- Init: load matching fonts, then draw ---

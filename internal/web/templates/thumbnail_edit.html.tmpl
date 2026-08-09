@@ -6,49 +6,74 @@
 <div class="thumb-editor">
   <canvas id="thumb-canvas" width="1280" height="720"
           data-canvas="{{.CanvasJSON}}"
+          data-image-base="/content/{{.ContentItemID}}/thumbnail-images/"
           role="img" aria-label="Thumbnail canvas, 1280 by 720 pixels"></canvas>
 
-  <form method="post" action="/content/{{.ContentItemID}}/thumbnails/{{.ThumbID}}" class="thumb-panel">
-    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <input type="hidden" id="canvas-json-field" name="canvas_json" value="{{.CanvasJSON}}">
+  <div class="thumb-panel">
+    <form method="post" action="/content/{{.ContentItemID}}/thumbnails/{{.ThumbID}}" class="stack">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <input type="hidden" id="canvas-json-field" name="canvas_json" value="{{.CanvasJSON}}">
 
-    <p>
-      <label for="ctl-bg">Background</label>
-      <input id="ctl-bg" type="color">
-    </p>
-    <p><button type="button" id="ctl-add">Add text layer</button></p>
-
-    <fieldset>
-      <legend>Selected text</legend>
       <p>
-        <label for="ctl-text">Text</label>
-        <textarea id="ctl-text" rows="2" autocomplete="off"></textarea>
+        <label for="ctl-bg">Background</label>
+        <input id="ctl-bg" type="color">
       </p>
-      <p>
-        <label for="ctl-color">Color</label>
-        <input id="ctl-color" type="color">
-      </p>
-      <p>
-        <label for="ctl-size">Font size</label>
-        <input id="ctl-size" type="number" min="8" max="400">
-      </p>
-      <p><label><input id="ctl-bold" type="checkbox"> Bold</label></p>
-      <p><button type="button" id="ctl-del">Delete text layer</button></p>
-    </fieldset>
+      <p><button type="button" id="ctl-add">Add text layer</button></p>
 
-    <p><label><input id="ctl-guides" type="checkbox"> Show safe-zone guides</label></p>
+      <fieldset id="text-controls">
+        <legend>Selected text</legend>
+        <p>
+          <label for="ctl-text">Text</label>
+          <textarea id="ctl-text" rows="2" autocomplete="off"></textarea>
+        </p>
+        <p>
+          <label for="ctl-color">Color</label>
+          <input id="ctl-color" type="color">
+        </p>
+        <p>
+          <label for="ctl-size">Font size</label>
+          <input id="ctl-size" type="number" min="8" max="400">
+        </p>
+        <p><label><input id="ctl-bold" type="checkbox"> Bold</label></p>
+      </fieldset>
 
-    <p>
-      <button type="submit">Save</button>
-      <a href="/content/{{.ContentItemID}}/thumbnails/{{.ThumbID}}/render.png" target="_blank" rel="noopener">View exported PNG ↗</a>
-    </p>
-  </form>
+      <fieldset id="image-controls">
+        <legend>Selected image</legend>
+        <p>
+          <label for="ctl-img-width">Width (px)</label>
+          <input id="ctl-img-width" type="number" min="8" max="1280">
+        </p>
+      </fieldset>
+
+      <p><button type="button" id="ctl-del" disabled>Delete selected layer</button></p>
+      <p><label><input id="ctl-guides" type="checkbox"> Show safe-zone guides</label></p>
+      <p>
+        <button type="submit">Save</button>
+        <a href="/content/{{.ContentItemID}}/thumbnails/{{.ThumbID}}/render.png" target="_blank" rel="noopener">View exported PNG ↗</a>
+      </p>
+    </form>
+
+    <form method="post" action="/content/{{.ContentItemID}}/thumbnails/{{.ThumbID}}/images"
+          enctype="multipart/form-data" class="stack">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <fieldset>
+        <legend>Add image</legend>
+        <p>
+          <label for="img-file">Image file (PNG, JPEG, or WebP)</label>
+          <input id="img-file" type="file" name="image" accept="image/png,image/jpeg,image/webp" required>
+        </p>
+        <p><label><input type="checkbox" name="as_background"> Use as background</label></p>
+        <p><button type="submit">Upload image</button></p>
+      </fieldset>
+    </form>
+  </div>
 </div>
 
 <p class="muted">
-  Click a text layer to select it, then drag to reposition. The canvas is a live
-  preview; the exported PNG is rendered server-side and is authoritative. The
-  editor requires JavaScript. Image layers, gradients, and templates arrive in
-  later slices.
+  Click a layer to select it, then drag to reposition (adjust an image's width in
+  the panel). The canvas is a live preview; the exported PNG is rendered
+  server-side and is authoritative. The editor requires JavaScript. Uploaded
+  images are re-encoded to PNG (stripping metadata). Resize handles, gradients,
+  and templates arrive in later slices.
 </p>
 {{end}}

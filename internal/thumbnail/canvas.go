@@ -23,16 +23,23 @@ type Canvas struct {
 	Layers     []Layer `json:"layers"`
 }
 
-// Layer is a single element. v1 supports text layers; image/shape layers arrive
-// in later slices.
+// Layer is a single element: a text layer or an image layer (referencing an
+// uploaded ThumbnailImage by id). Shapes/gradients arrive in later slices.
 type Layer struct {
-	Type     string `json:"type"`
+	Type string `json:"type"`
+	X    int    `json:"x"`
+	Y    int    `json:"y"`
+
+	// Text layer.
 	Text     string `json:"text,omitempty"`
-	X        int    `json:"x"`
-	Y        int    `json:"y"`
 	FontSize int    `json:"fontSize,omitempty"`
 	Color    string `json:"color,omitempty"`
 	Bold     bool   `json:"bold,omitempty"`
+
+	// Image layer.
+	ImageID int64 `json:"imageId,omitempty"`
+	W       int   `json:"w,omitempty"`
+	H       int   `json:"h,omitempty"`
 }
 
 // DefaultCanvas returns a starter canvas: a dark background with one title.

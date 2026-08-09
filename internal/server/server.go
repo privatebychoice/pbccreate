@@ -71,6 +71,8 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /content/{id}/thumbnails/{thumbID}/render.png", s.handleThumbnailRender)
 	mux.HandleFunc("POST /content/{id}/thumbnails/{thumbID}", s.handleThumbnailSave)
 	mux.HandleFunc("POST /content/{id}/thumbnails/{thumbID}/delete", s.handleThumbnailDelete)
+	mux.HandleFunc("POST /content/{id}/thumbnails/{thumbID}/images", s.handleThumbnailImageUpload)
+	mux.HandleFunc("GET /content/{id}/thumbnail-images/{imgID}", s.handleThumbnailImageServe)
 	mux.HandleFunc("POST /content/{id}/media", s.handleMediaAdd)
 	mux.HandleFunc("POST /content/{id}/media/verify", s.handleMediaVerify)
 	mux.HandleFunc("POST /content/{id}/media/scan", s.handleMediaScan)
@@ -79,8 +81,27 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /content/{id}/media/{mediaID}/preview", s.handleMediaPreview)
 	mux.HandleFunc("POST /content/{id}/media/{mediaID}/status", s.handleMediaStatus)
 	mux.HandleFunc("POST /content/{id}/media/{mediaID}/delete", s.handleMediaDelete)
-	// Middleware order: security headers outermost, then CSRF/same-origin.
-	return s.securityHeaders(s.csrf(mux))
+	// Middleware order: security headers outermost, then a request-body size
+	// cap (before form parsing), then CSRF/same-origin.
+	return s.securityHeaders(s.limitBody(s.csrf(mux)))
+}
+
+// maxRequestBody caps any request body before parsing (uploads are validated
+// more tightly in their handler).
+const maxRequestBody = 16 << 20
+
+// limitBody bounds request bodies for methods that carry one, so form/multipart
+// parsing (including in the CSRF middleware) can never read an unbounded body.
+func (s *Server) limitBody(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost, http.MethodPut, http.MethodPatch:
+			if r.Body != nil {
+				r.Body = http.MaxBytesReader(w, r.Body, maxRequestBody)
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // Run starts the loopback HTTP server and blocks until ctx is cancelled, then

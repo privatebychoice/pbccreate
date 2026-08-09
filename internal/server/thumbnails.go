@@ -2,8 +2,10 @@ package server
 
 import (
 	"errors"
+	"image"
 	"image/png"
 	"net/http"
+	"os"
 	"strconv"
 
 	"go.privatebychoice.com/pbccreate/internal/buildinfo"
@@ -149,7 +151,7 @@ func (s *Server) handleThumbnailRender(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	img, err := thumbnail.Render(canvas)
+	img, err := thumbnail.Render(canvas, s.thumbImageResolver(r, id))
 	if err != nil {
 		s.log.Error("render thumbnail", "err", err, "thumb", thumbID)
 		http.Error(w, "internal error", http.StatusInternalServerError)
@@ -159,5 +161,26 @@ func (s *Server) handleThumbnailRender(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	if err := png.Encode(w, img); err != nil {
 		s.log.Error("encode png", "err", err, "thumb", thumbID)
+	}
+}
+
+// thumbImageResolver returns an ImageResolver that loads uploaded images for the
+// given content item from disk (decoding the stored PNG).
+func (s *Server) thumbImageResolver(r *http.Request, contentItemID int64) thumbnail.ImageResolver {
+	return func(imageID int64) image.Image {
+		ti, err := store.GetThumbnailImage(r.Context(), s.db, imageID, contentItemID)
+		if err != nil {
+			return nil
+		}
+		f, err := os.Open(s.thumbImagePath(ti.ID))
+		if err != nil {
+			return nil
+		}
+		defer func() { _ = f.Close() }()
+		im, err := png.Decode(f)
+		if err != nil {
+			return nil
+		}
+		return im
 	}
 }
