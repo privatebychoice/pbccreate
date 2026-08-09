@@ -94,6 +94,13 @@ button {
   background: color-mix(in srgb, #c0392b 8%, transparent);
 }
 
+.notice {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
 table { border-collapse: collapse; width: 100%; margin-block-start: 1.5rem; }
 th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); }
 

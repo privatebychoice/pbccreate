@@ -198,6 +198,8 @@
     {{end}}
   </div>
 
+  {{if .Notice}}<p class="notice" role="status">{{.Notice}}</p>{{end}}
+
   {{if and .Media (not .ProbeAvailable)}}
   <p class="muted">Install ffmpeg (which provides ffprobe) to read media duration, resolution, and codec.</p>
   {{end}}
@@ -285,6 +287,15 @@
       <textarea id="media-notes" name="notes" rows="2" autocomplete="off"></textarea>
     </p>
     <p><button type="submit">Add media</button></p>
+  </form>
+
+  <form method="post" action="/content/{{.Item.ID}}/media/scan" class="stack">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <p>
+      <label for="scan-dir">Scan a folder <span class="muted">(absolute, within a media root; catalogues all media files inside)</span></label>
+      <input id="scan-dir" name="dir" required maxlength="1000" autocomplete="off" spellcheck="false">
+    </p>
+    <p><button type="submit">Scan folder</button></p>
   </form>
 </section>
 

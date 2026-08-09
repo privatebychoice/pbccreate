@@ -62,6 +62,7 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("POST /content/{id}/shots/{shotID}/move", s.handleShotMove)
 	mux.HandleFunc("POST /content/{id}/media", s.handleMediaAdd)
 	mux.HandleFunc("POST /content/{id}/media/verify", s.handleMediaVerify)
+	mux.HandleFunc("POST /content/{id}/media/scan", s.handleMediaScan)
 	mux.HandleFunc("POST /content/{id}/media/probe", s.handleMediaProbe)
 	mux.HandleFunc("POST /content/{id}/media/previews", s.handleMediaPreviews)
 	mux.HandleFunc("GET /content/{id}/media/{mediaID}/preview", s.handleMediaPreview)

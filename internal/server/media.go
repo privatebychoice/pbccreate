@@ -124,6 +124,75 @@ func (s *Server) handleMediaVerify(w http.ResponseWriter, r *http.Request) {
 	s.redirectToItem(w, r, id)
 }
 
+// handleMediaScan walks a directory (within a media root) and catalogues any
+// recognized media files not already tracked for this item. Cataloguing only —
+// metadata/previews are produced by the Probe / Generate previews actions.
+func (s *Server) handleMediaScan(w http.ResponseWriter, r *http.Request) {
+	id, ok := s.requireContentItem(w, r)
+	if !ok {
+		return
+	}
+	dir := strings.TrimSpace(r.PostFormValue("dir"))
+	if !media.WithinRoots(dir, s.cfg.MediaRoots) {
+		http.Error(w, "folder must be an absolute path within a configured media root", http.StatusBadRequest)
+		return
+	}
+	if fi, err := os.Stat(dir); err != nil || !fi.IsDir() {
+		http.Error(w, "not a directory", http.StatusBadRequest)
+		return
+	}
+
+	files, err := media.ScanDir(dir)
+	if err != nil {
+		s.log.Error("scan dir", "err", err, "dir", dir)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	existing, err := s.existingMediaPaths(r.Context(), id)
+	if err != nil {
+		s.log.Error("list media for scan", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	added := 0
+	for _, f := range files {
+		if existing[f.Path] {
+			continue
+		}
+		if _, err := store.AddMediaAsset(r.Context(), s.db, store.MediaAsset{
+			ContentItemID: id,
+			Path:          f.Path,
+			Kind:          f.Kind,
+			Status:        "recorded",
+			Present:       true,
+			SizeBytes:     f.Size,
+			MTime:         f.ModTime,
+			LastSeenAt:    f.ModTime,
+		}); err != nil {
+			s.log.Warn("scan add failed", "err", err, "path", f.Path)
+			continue
+		}
+		added++
+	}
+	skipped := len(files) - added
+	s.log.Info("media scan complete", "id", id, "found", len(files), "added", added, "skipped", skipped)
+	http.Redirect(w, r, fmt.Sprintf("/content/%d?added=%d&skipped=%d", id, added, skipped), http.StatusSeeOther)
+}
+
+// existingMediaPaths returns the set of paths already catalogued for an item.
+func (s *Server) existingMediaPaths(ctx context.Context, contentItemID int64) (map[string]bool, error) {
+	assets, err := store.ListMediaAssets(ctx, s.db, contentItemID)
+	if err != nil {
+		return nil, err
+	}
+	set := make(map[string]bool, len(assets))
+	for _, a := range assets {
+		set[a.Path] = true
+	}
+	return set, nil
+}
+
 // handleMediaProbe runs ffprobe on every present asset for the item and stores
 // the metadata. No-op (with a log) when ffprobe is unavailable.
 func (s *Server) handleMediaProbe(w http.ResponseWriter, r *http.Request) {

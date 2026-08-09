@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -145,6 +146,14 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, total := buildOutline(segments)
 
+	// A scan redirect carries ?added=&skipped= to show a one-time notice.
+	notice := ""
+	if q := r.URL.Query(); q.Has("added") {
+		added, _ := strconv.Atoi(q.Get("added"))
+		skipped, _ := strconv.Atoi(q.Get("skipped"))
+		notice = fmt.Sprintf("Imported %d file(s); skipped %d already catalogued.", added, skipped)
+	}
+
 	shots, err := store.ListShots(r.Context(), s.db, item.ID)
 	if err != nil {
 		s.log.Error("list shots", "err", err, "id", id)
@@ -175,6 +184,7 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		"MediaKinds":          store.MediaKinds,
 		"ProbeAvailable":      media.ProbeAvailable(s.cfg.FFprobe),
 		"ThumbAvailable":      media.ThumbAvailable(s.cfg.FFmpeg),
+		"Notice":              notice,
 	}
 	if err := s.tmpl.render(w, http.StatusOK, "content_detail.html.tmpl", data); err != nil {
 		s.log.Error("render content detail", "err", err)
