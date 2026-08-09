@@ -268,7 +268,7 @@
         <td>{{if .SourceURL}}<a href="{{.SourceURL}}" rel="noopener noreferrer nofollow" target="_blank">{{.Name}}</a>{{else}}{{.Name}}{{end}}
           {{if .LicenseID}}<div class="muted path">ID: {{.LicenseID}}</div>{{end}}</td>
         <td>{{humanize .Kind}}</td>
-        <td>{{if .Provider}}{{.Provider}}{{else}}<span class="muted">—</span>{{end}}</td>
+        <td>{{if .ProviderName}}{{.ProviderName}}{{else if .Provider}}{{.Provider}}{{else}}<span class="muted">—</span>{{end}}</td>
         <td>{{if .License}}{{.License}}{{else}}<span class="muted">—</span>{{end}}</td>
         <td>{{if .CreditText}}{{.CreditText}}{{else}}<span class="muted">auto</span>{{end}}</td>
         <td>
@@ -304,9 +304,18 @@
       </select>
     </p>
     <p>
-      <label for="a-provider">Provider / source</label>
+      <label for="a-provider">Provider / source <span class="muted">(free text)</span></label>
       <input id="a-provider" name="provider" maxlength="200" autocomplete="off">
     </p>
+    {{if .Providers}}
+    <p>
+      <label for="a-provider-id">Or link a registered provider <span class="muted">(optional, §5.20)</span></label>
+      <select id="a-provider-id" name="provider_id">
+        <option value="">— none —</option>
+        {{range .Providers}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+      </select>
+    </p>
+    {{end}}
     <p>
       <label for="a-license">License</label>
       <input id="a-license" name="license" maxlength="200" placeholder="e.g. CC-BY, royalty-free, licensed" autocomplete="off">
@@ -336,6 +345,65 @@
       <label><input type="checkbox" name="included" value="1" checked> Include in description credits block</label>
     </p>
     <p><button type="submit">Add attribution</button></p>
+  </form>
+</section>
+
+<section aria-labelledby="lic-heading">
+  <h2 id="lic-heading">License files <span class="muted">(legal documents on disk)</span></h2>
+  <p class="muted">Keep license certificates, receipts, or terms for this project. Files are stored locally and downloaded, never opened in the browser. This is separate from the credit text above.</p>
+
+  {{if .LicenseFiles}}
+  <table>
+    <thead>
+      <tr><th>File</th><th>Provider</th><th>Applies to</th><th>Size</th><th>Uploaded</th><th></th></tr>
+    </thead>
+    <tbody>
+      {{range .LicenseFiles}}
+      <tr>
+        <td><a href="/content/{{$.Item.ID}}/licenses/{{.ID}}/download">{{.OriginalFilename}}</a>
+          {{if .Description}}<div class="muted">{{.Description}}</div>{{end}}</td>
+        <td>{{if .ProviderName}}{{.ProviderName}}{{else}}<span class="muted">—</span>{{end}}</td>
+        <td>{{if .AppliesTo}}{{.AppliesTo}}{{else}}<span class="muted">—</span>{{end}}</td>
+        <td>{{filesize .SizeBytes}}</td>
+        <td>{{if not .UploadedAt.IsZero}}{{.UploadedAt.Format "2006-01-02"}}{{end}}</td>
+        <td>
+          <form method="post" action="/content/{{$.Item.ID}}/licenses/{{.ID}}/delete" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" aria-label="Delete license file '{{.OriginalFilename}}'">✕</button>
+          </form>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p>No license files yet.</p>
+  {{end}}
+
+  <form method="post" action="/content/{{.Item.ID}}/licenses" enctype="multipart/form-data" class="stack">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <p>
+      <label for="lic-file">File <span class="muted">(PDF, PNG, JPG, WEBP, or TXT; up to 15 MB)</span></label>
+      <input id="lic-file" name="file" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.txt" required>
+    </p>
+    <p>
+      <label for="lic-description">Description <span class="muted">(optional)</span></label>
+      <input id="lic-description" name="description" maxlength="300" autocomplete="off">
+    </p>
+    <p>
+      <label for="lic-applies-to">Applies to <span class="muted">(which assets this license covers)</span></label>
+      <input id="lic-applies-to" name="applies_to" maxlength="300" autocomplete="off">
+    </p>
+    {{if .Providers}}
+    <p>
+      <label for="lic-provider">Provider <span class="muted">(optional, §5.20)</span></label>
+      <select id="lic-provider" name="provider_id">
+        <option value="">— none —</option>
+        {{range .Providers}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+      </select>
+    </p>
+    {{end}}
+    <p><button type="submit">Upload license file</button></p>
   </form>
 </section>
 

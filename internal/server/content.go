@@ -251,6 +251,20 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	licenseFiles, err := store.ListLicenseFiles(r.Context(), s.db, item.ID)
+	if err != nil {
+		s.log.Error("list license files", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	providers, err := store.ListAssetProviders(r.Context(), s.db)
+	if err != nil {
+		s.log.Error("list asset providers", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
 	thumbs, err := store.ListThumbnails(r.Context(), s.db, item.ID)
 	if err != nil {
 		s.log.Error("list thumbnails", "err", err, "id", id)
@@ -322,6 +336,8 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		"LabelColors":         store.LabelColors,
 		"Attributions":        attributions,
 		"AttributionKinds":    store.AttributionKinds,
+		"LicenseFiles":        licenseFiles,
+		"Providers":           providers,
 	}
 	if err := s.tmpl.render(w, http.StatusOK, "content_detail.html.tmpl", data); err != nil {
 		s.log.Error("render content detail", "err", err)

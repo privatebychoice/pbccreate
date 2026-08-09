@@ -18,6 +18,7 @@ func (s *Server) handleAttributionAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	mediaID, _ := strconv.ParseInt(r.PostFormValue("media_asset_id"), 10, 64)
+	providerID, _ := strconv.ParseInt(r.PostFormValue("provider_id"), 10, 64)
 	_, err := store.CreateAttribution(r.Context(), s.db, store.Attribution{
 		ContentItemID:         id,
 		Name:                  r.PostFormValue("name"),
@@ -28,6 +29,7 @@ func (s *Server) handleAttributionAdd(w http.ResponseWriter, r *http.Request) {
 		CreditText:            r.PostFormValue("credit_text"),
 		SourceURL:             r.PostFormValue("source_url"),
 		MediaAssetID:          mediaID,
+		ProviderID:            providerID,
 		IncludedInDescription: r.PostFormValue("included") != "",
 	})
 	switch {
