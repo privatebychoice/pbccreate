@@ -20,5 +20,22 @@
   <dt>Updated</dt><dd>{{if not .Item.UpdatedAt.IsZero}}{{.Item.UpdatedAt.Format "2006-01-02 15:04"}}{{end}}</dd>
 </dl>
 
-<p class="muted">Scripts, shot lists, thumbnails, and more attach here in later slices.</p>
+<section aria-labelledby="script-heading">
+  <h2 id="script-heading">Script</h2>
+  <p class="muted">{{.Script.WordCount}} words · ~{{.Script.DurationLabel}} at {{.Script.WPM}} wpm</p>
+  <form method="post" action="/content/{{.Item.ID}}/script" class="stack">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <p>
+      <label for="body">Script / voiceover</label>
+      <textarea id="body" name="body" rows="16" autocomplete="off">{{.Script.Body}}</textarea>
+    </p>
+    <p>
+      <label for="wpm">Words per minute</label>
+      <input id="wpm" name="wpm" type="number" min="1" max="500" value="{{.Script.WPM}}">
+    </p>
+    <p><button type="submit">Save script</button></p>
+  </form>
+</section>
+
+<p class="muted">Shot lists, thumbnails, and more attach here in later slices.</p>
 {{end}}

@@ -65,6 +65,17 @@ nav a { margin-inline-end: 1rem; }
   border: 1px solid var(--border);
   border-radius: 4px;
 }
+.stack textarea {
+  width: 100%;
+  max-width: 48rem;
+  padding: 0.5rem;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font: inherit;
+  resize: vertical;
+}
 
 button {
   padding: 0.45rem 0.9rem;

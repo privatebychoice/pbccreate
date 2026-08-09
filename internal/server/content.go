@@ -129,12 +129,20 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	script, err := store.GetScript(r.Context(), s.db, item.ID)
+	if err != nil {
+		s.log.Error("get script", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
 	data := map[string]any{
 		"Title":     item.Title,
 		"Build":     buildinfo.Build,
 		"CSRFToken": csrfToken(r),
 		"Item":      item,
 		"Statuses":  store.ContentStatuses,
+		"Script":    script,
 	}
 	if err := s.tmpl.render(w, http.StatusOK, "content_detail.html.tmpl", data); err != nil {
 		s.log.Error("render content detail", "err", err)
@@ -162,6 +170,33 @@ func (s *Server) handleContentStatus(w http.ResponseWriter, r *http.Request) {
 		s.log.Error("update content status", "err", err, "id", id)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	}
+}
+
+// handleContentScriptSave upserts the script for a content item and returns to
+// the item detail page.
+func (s *Server) handleContentScriptSave(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	// Ensure the item exists so a bad id yields 404 rather than a FK error.
+	if _, err := store.GetContentItem(r.Context(), s.db, id); errors.Is(err, store.ErrContentItemNotFound) {
+		http.NotFound(w, r)
+		return
+	} else if err != nil {
+		s.log.Error("get content item", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	wpm, _ := strconv.Atoi(r.PostFormValue("wpm"))
+	if _, err := store.SaveScript(r.Context(), s.db, id, r.PostFormValue("body"), wpm); err != nil {
+		s.log.Error("save script", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/content/"+strconv.FormatInt(id, 10), http.StatusSeeOther)
 }
 
 // safeReturn restricts post-action redirects to in-app content paths, guarding
