@@ -1,0 +1,57 @@
+{{define "content"}}
+<p><a href="/providers">← Back to providers</a></p>
+
+<h1>{{.Provider.Name}}</h1>
+
+{{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+
+<form method="post" action="/providers/{{.Provider.ID}}" class="stack">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <p>
+    <label for="name">Name</label>
+    <input id="name" name="name" required maxlength="200" value="{{.Provider.Name}}" autocomplete="off">
+  </p>
+  <p>
+    <label for="service_type">Service type</label>
+    <select id="service_type" name="service_type">
+      {{range .ServiceTypes}}<option value="{{.}}"{{if eq . $.Provider.ServiceType}} selected{{end}}>{{humanize .}}</option>{{end}}
+    </select>
+  </p>
+  <p>
+    <label for="website_url">Website URL</label>
+    <input id="website_url" name="website_url" type="url" maxlength="500" value="{{.Provider.WebsiteURL}}" autocomplete="off">
+  </p>
+  <p>
+    <label for="plan_tier">Plan / tier</label>
+    <input id="plan_tier" name="plan_tier" maxlength="200" value="{{.Provider.PlanTier}}" autocomplete="off">
+  </p>
+  <p>
+    <label for="billing_cycle">Billing cycle <span class="muted">(e.g. monthly, annual)</span></label>
+    <input id="billing_cycle" name="billing_cycle" maxlength="100" value="{{.Provider.BillingCycle}}" autocomplete="off">
+  </p>
+  <p>
+    <label for="renewal_on">Renewal date</label>
+    <input id="renewal_on" name="renewal_on" type="date" value="{{.Provider.RenewalOn}}" autocomplete="off">
+  </p>
+  <p>
+    <label for="status">Status</label>
+    <select id="status" name="status">
+      {{range .Statuses}}<option value="{{.}}"{{if eq . $.Provider.Status}} selected{{end}}>{{humanize .}}</option>{{end}}
+    </select>
+  </p>
+  <p>
+    <label for="portal_url">Portal / account URL <span class="muted">(link only — never store logins or passwords)</span></label>
+    <input id="portal_url" name="portal_url" type="url" maxlength="500" value="{{.Provider.PortalURL}}" autocomplete="off">
+  </p>
+  <p>
+    <label for="terms_notes">License / terms notes</label>
+    <textarea id="terms_notes" name="terms_notes" rows="4" autocomplete="off">{{.Provider.TermsNotes}}</textarea>
+  </p>
+  <p><button type="submit">Save provider</button></p>
+</form>
+
+<form method="post" action="/providers/{{.Provider.ID}}/delete" class="inline-form">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <button type="submit">Delete provider</button>
+</form>
+{{end}}

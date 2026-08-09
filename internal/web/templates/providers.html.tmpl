@@ -1,0 +1,64 @@
+{{define "content"}}
+<h1>Asset providers <span class="muted">(subscriptions)</span></h1>
+<p class="muted">Third-party media services you subscribe to. Store a portal link only — never logins or credentials.</p>
+
+{{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+
+<form method="post" action="/providers" class="stack">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <p>
+    <label for="name">Name</label>
+    <input id="name" name="name" required maxlength="200" autocomplete="off">
+  </p>
+  <p>
+    <label for="service_type">Service type</label>
+    <select id="service_type" name="service_type">
+      {{range .ServiceTypes}}<option value="{{.}}">{{humanize .}}</option>{{end}}
+    </select>
+  </p>
+  <p>
+    <label for="website_url">Website URL</label>
+    <input id="website_url" name="website_url" type="url" maxlength="500" autocomplete="off">
+  </p>
+  <p>
+    <label for="plan_tier">Plan / tier</label>
+    <input id="plan_tier" name="plan_tier" maxlength="200" autocomplete="off">
+  </p>
+  <p>
+    <label for="billing_cycle">Billing cycle <span class="muted">(e.g. monthly, annual)</span></label>
+    <input id="billing_cycle" name="billing_cycle" maxlength="100" autocomplete="off">
+  </p>
+  <p>
+    <label for="renewal_on">Renewal date</label>
+    <input id="renewal_on" name="renewal_on" type="date" autocomplete="off">
+  </p>
+  <p>
+    <label for="status">Status</label>
+    <select id="status" name="status">
+      {{range .Statuses}}<option value="{{.}}">{{humanize .}}</option>{{end}}
+    </select>
+  </p>
+  <p><button type="submit">Add provider</button></p>
+</form>
+
+{{if .Providers}}
+<table>
+  <thead>
+    <tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Plan</th><th scope="col">Renewal</th><th scope="col">Status</th></tr>
+  </thead>
+  <tbody>
+    {{range .Providers}}
+    <tr>
+      <td><a href="/providers/{{.ID}}">{{.Name}}</a></td>
+      <td>{{humanize .ServiceType}}</td>
+      <td>{{if .PlanTier}}{{.PlanTier}}{{else}}<span class="muted">—</span>{{end}}</td>
+      <td>{{if .RenewalOn}}{{.RenewalOn}}{{else}}<span class="muted">—</span>{{end}}</td>
+      <td>{{humanize .Status}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{else}}
+<p>No providers yet. Add your first subscription above.</p>
+{{end}}
+{{end}}
