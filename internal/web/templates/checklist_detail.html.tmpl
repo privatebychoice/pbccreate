@@ -1,0 +1,71 @@
+{{define "content"}}
+<p><a href="/checklists">← Back to checklists</a></p>
+
+<h1>{{.Template.Name}}</h1>
+<p class="muted">{{humanize .Template.Stage}}</p>
+
+{{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+
+<form method="post" action="/checklists/{{.Template.ID}}" class="stack">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <p>
+    <label for="name">Name</label>
+    <input id="name" name="name" required maxlength="200" value="{{.Template.Name}}" autocomplete="off">
+  </p>
+  <p>
+    <label for="stage">Stage</label>
+    <select id="stage" name="stage">
+      {{range .Stages}}<option value="{{.}}"{{if eq . $.Template.Stage}} selected{{end}}>{{humanize .}}</option>{{end}}
+    </select>
+  </p>
+  <p>
+    <label for="description">Description</label>
+    <textarea id="description" name="description" rows="2" autocomplete="off">{{.Template.Description}}</textarea>
+  </p>
+  <p><button type="submit">Save checklist</button></p>
+</form>
+
+<section aria-labelledby="items-heading">
+  <h2 id="items-heading">Items</h2>
+  {{if .Items}}
+  <ol class="outline">
+    {{range .Items}}
+    <li>
+      <div class="seg-head">
+        <span>{{.Text}}</span>
+        <span class="muted">
+          <form method="post" action="/checklists/{{$.Template.ID}}/items/{{.ID}}/move" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <input type="hidden" name="dir" value="up">
+            <button type="submit" aria-label="Move item up">↑</button>
+          </form>
+          <form method="post" action="/checklists/{{$.Template.ID}}/items/{{.ID}}/move" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <input type="hidden" name="dir" value="down">
+            <button type="submit" aria-label="Move item down">↓</button>
+          </form>
+          <form method="post" action="/checklists/{{$.Template.ID}}/items/{{.ID}}/delete" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" aria-label="Delete item">Delete</button>
+          </form>
+        </span>
+      </div>
+    </li>
+    {{end}}
+  </ol>
+  {{else}}
+  <p>No items yet.</p>
+  {{end}}
+
+  <form method="post" action="/checklists/{{.Template.ID}}/items" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <input name="text" placeholder="New item" required maxlength="300" autocomplete="off">
+    <button type="submit">Add item</button>
+  </form>
+</section>
+
+<form method="post" action="/checklists/{{.Template.ID}}/delete" class="inline-form">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <button type="submit">Delete checklist</button>
+</form>
+{{end}}

@@ -1,0 +1,45 @@
+{{define "content"}}
+<h1>Checklists <span class="muted">(SOPs)</span></h1>
+<p class="muted">Reusable per-stage checklists. Start one on a content item to snapshot its items and tick them off as you go.</p>
+
+{{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+
+<form method="post" action="/checklists" class="stack">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <p>
+    <label for="name">Name</label>
+    <input id="name" name="name" required maxlength="200" autocomplete="off">
+  </p>
+  <p>
+    <label for="stage">Stage</label>
+    <select id="stage" name="stage">
+      {{range .Stages}}<option value="{{.}}">{{humanize .}}</option>{{end}}
+    </select>
+  </p>
+  <p>
+    <label for="description">Description</label>
+    <textarea id="description" name="description" rows="2" autocomplete="off"></textarea>
+  </p>
+  <p><button type="submit">Add checklist</button></p>
+</form>
+
+{{if .Templates}}
+<table>
+  <thead>
+    <tr><th scope="col">Checklist</th><th scope="col">Stage</th><th scope="col">Items</th></tr>
+  </thead>
+  <tbody>
+    {{range .Templates}}
+    <tr>
+      <td><a href="/checklists/{{.ID}}">{{.Name}}</a>
+        {{if .Description}}<div class="muted">{{.Description}}</div>{{end}}</td>
+      <td>{{humanize .Stage}}</td>
+      <td>{{.ItemCount}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{else}}
+<p>No checklists yet. Define your first SOP above.</p>
+{{end}}
+{{end}}

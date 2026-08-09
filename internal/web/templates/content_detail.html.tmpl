@@ -36,6 +36,50 @@
   <p class="muted">Marking the item published with an override reason is planned; for now use the Status control above.</p>
 </section>
 
+<section aria-labelledby="runs-heading">
+  <h2 id="runs-heading">Stage checklists <span class="muted">(SOP runs)</span></h2>
+
+  {{range .ChecklistRuns}}
+  <div class="placement">
+    <div class="seg-head">
+      <strong>{{.Name}}</strong>
+      <span class="muted">{{humanize .Stage}} · {{.DoneCount}} / {{len .Items}} done
+        <form method="post" action="/content/{{$.Item.ID}}/checklist-runs/{{.ID}}/delete" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <button type="submit" aria-label="Delete checklist run {{.Name}}">✕</button>
+        </form>
+      </span>
+    </div>
+    <ul class="checklist">
+      {{range .Items}}
+      <li>
+        <form method="post" action="/content/{{$.Item.ID}}/checklist-runs/{{.RunID}}/items/{{.ID}}/toggle" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <button type="submit" aria-label="Toggle '{{.Text}}' done">{{if .Done}}☑{{else}}☐{{end}}</button>
+        </form>
+        <span{{if .Done}} class="done"{{end}}>{{.Text}}</span>
+      </li>
+      {{end}}
+    </ul>
+  </div>
+  {{else}}
+  <p>No stage checklists started.</p>
+  {{end}}
+
+  {{if .ChecklistTemplates}}
+  <form method="post" action="/content/{{.Item.ID}}/checklist-runs" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <label for="checklist-template">Start a checklist</label>
+    <select id="checklist-template" name="template_id" required>
+      {{range .ChecklistTemplates}}<option value="{{.ID}}">{{.Name}} ({{humanize .Stage}})</option>{{end}}
+    </select>
+    <button type="submit">Start</button>
+  </form>
+  {{else}}
+  <p class="muted">Define reusable checklists on the <a href="/checklists">Checklists</a> page first.</p>
+  {{end}}
+</section>
+
 <section aria-labelledby="script-heading">
   <h2 id="script-heading">Script</h2>
   <p class="muted">{{.Script.WordCount}} words · ~{{.Script.DurationLabel}} at {{.Script.WPM}} wpm</p>

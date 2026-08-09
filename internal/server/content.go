@@ -279,6 +279,19 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	checklistTemplates, err := store.ListChecklistTemplates(r.Context(), s.db)
+	if err != nil {
+		s.log.Error("list checklist templates", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	checklistRuns, err := s.checklistRunViews(r, item.ID)
+	if err != nil {
+		s.log.Error("checklist run views", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
 	itemPillars, err := store.ListPillarsForItem(r.Context(), s.db, item.ID)
 	if err != nil {
 		s.log.Error("list item pillars", "err", err, "id", id)
@@ -371,6 +384,8 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		"Publications":        publications,
 		"Visibilities":        store.Visibilities,
 		"Retrospective":       retro,
+		"ChecklistTemplates":  checklistTemplates,
+		"ChecklistRuns":       checklistRuns,
 	}
 	if err := s.tmpl.render(w, http.StatusOK, "content_detail.html.tmpl", data); err != nil {
 		s.log.Error("render content detail", "err", err)
