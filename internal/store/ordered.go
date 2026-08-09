@@ -11,22 +11,26 @@ import (
 // it to their table-specific not-found error.
 var errOrderedNotFound = errors.New("ordered row not found")
 
-// orderedTables allowlists the tables moveOrdered may touch. Table names are
-// interpolated into SQL, so they must come only from this set — never user input.
-var orderedTables = map[string]bool{
-	"outline_segments": true,
-	"shots":            true,
+// orderedTables allowlists the tables moveOrdered may touch and maps each to the
+// column that scopes its ordering. Table and column names are interpolated into
+// SQL, so they must come only from this set — never user input.
+var orderedTables = map[string]string{
+	"outline_segments": "content_item_id",
+	"shots":            "content_item_id",
+	"series_items":     "series_id",
 }
 
 // moveOrdered swaps a row's position with its neighbor in the given direction
-// ("up"/"down") within one transaction, scoped to a content item. Moving past an
-// edge is a no-op. Returns ErrInvalidMove for a bad direction and
+// ("up"/"down") within one transaction, scoped by the table's scope column (e.g.
+// content_item_id for outline/shots, series_id for series episodes). Moving past
+// an edge is a no-op. Returns ErrInvalidMove for a bad direction and
 // errOrderedNotFound if the row is absent.
-func moveOrdered(ctx context.Context, db *sql.DB, table string, id, contentItemID int64, dir string) error {
+func moveOrdered(ctx context.Context, db *sql.DB, table string, id, scopeID int64, dir string) error {
 	if dir != "up" && dir != "down" {
 		return ErrInvalidMove
 	}
-	if !orderedTables[table] {
+	scopeCol, ok := orderedTables[table]
+	if !ok {
 		return fmt.Errorf("moveOrdered: unknown table %q", table)
 	}
 
@@ -38,8 +42,8 @@ func moveOrdered(ctx context.Context, db *sql.DB, table string, id, contentItemI
 
 	var pos int
 	err = tx.QueryRowContext(ctx,
-		fmt.Sprintf(`SELECT position FROM %s WHERE id = ? AND content_item_id = ?`, table),
-		id, contentItemID).Scan(&pos)
+		fmt.Sprintf(`SELECT position FROM %s WHERE id = ? AND %s = ?`, table, scopeCol),
+		id, scopeID).Scan(&pos)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return errOrderedNotFound
@@ -56,8 +60,8 @@ func moveOrdered(ctx context.Context, db *sql.DB, table string, id, contentItemI
 		neighborPos int
 	)
 	err = tx.QueryRowContext(ctx,
-		fmt.Sprintf(`SELECT id, position FROM %s WHERE content_item_id = ? AND position %s ? ORDER BY position %s LIMIT 1`, table, cmp, order),
-		contentItemID, pos).Scan(&neighborID, &neighborPos)
+		fmt.Sprintf(`SELECT id, position FROM %s WHERE %s = ? AND position %s ? ORDER BY position %s LIMIT 1`, table, scopeCol, cmp, order),
+		scopeID, pos).Scan(&neighborID, &neighborPos)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil // at the edge; nothing to do
 	}

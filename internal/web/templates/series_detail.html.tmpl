@@ -1,0 +1,81 @@
+{{define "content"}}
+<p><a href="/series">← Back to series</a></p>
+
+<h1>{{.Series.Name}}</h1>
+<p class="muted">{{.Series.ChannelName}} · {{.DoneCount}} / {{len .Episodes}} published</p>
+
+{{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+
+<form method="post" action="/series/{{.Series.ID}}" class="stack">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <p>
+    <label for="name">Name</label>
+    <input id="name" name="name" required maxlength="200" value="{{.Series.Name}}" autocomplete="off">
+  </p>
+  <p>
+    <label for="description">Description <span class="muted">(per-playlist)</span></label>
+    <textarea id="description" name="description" rows="3" autocomplete="off">{{.Series.Description}}</textarea>
+  </p>
+  <p><button type="submit">Save series</button></p>
+</form>
+
+<section aria-labelledby="episodes-heading">
+  <h2 id="episodes-heading">Episodes</h2>
+  {{if .Episodes}}
+  <ol class="outline">
+    {{range .Episodes}}
+    <li>
+      <div class="seg-head">
+        <strong><a href="/content/{{.ContentItemID}}">{{.Title}}</a></strong>
+        <span class="muted">
+          {{humanize .Status}}
+          <form method="post" action="/series/{{$.Series.ID}}/episodes/{{.ID}}/move" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <input type="hidden" name="dir" value="up">
+            <button type="submit" aria-label="Move '{{.Title}}' up">↑</button>
+          </form>
+          <form method="post" action="/series/{{$.Series.ID}}/episodes/{{.ID}}/move" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <input type="hidden" name="dir" value="down">
+            <button type="submit" aria-label="Move '{{.Title}}' down">↓</button>
+          </form>
+          <form method="post" action="/series/{{$.Series.ID}}/episodes/{{.ID}}/remove" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" aria-label="Remove '{{.Title}}' from series">Remove</button>
+          </form>
+        </span>
+      </div>
+      <form method="post" action="/series/{{$.Series.ID}}/episodes/{{.ID}}/arc" class="stack">
+        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+        <p>
+          <label for="arc-{{.ID}}">Arc / continuity notes</label>
+          <textarea id="arc-{{.ID}}" name="arc_notes" rows="2" autocomplete="off">{{.ArcNotes}}</textarea>
+        </p>
+        <p><button type="submit">Save notes</button></p>
+      </form>
+    </li>
+    {{end}}
+  </ol>
+  {{else}}
+  <p>No episodes yet.</p>
+  {{end}}
+
+  {{if .Candidates}}
+  <form method="post" action="/series/{{.Series.ID}}/episodes" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <label for="content_item_id">Add episode</label>
+    <select id="content_item_id" name="content_item_id" required>
+      {{range .Candidates}}<option value="{{.ID}}">{{.Title}} ({{humanize .Status}})</option>{{end}}
+    </select>
+    <button type="submit">Add</button>
+  </form>
+  {{else}}
+  <p class="muted">Every content item in this channel is already in the series (or the channel has none yet).</p>
+  {{end}}
+</section>
+
+<form method="post" action="/series/{{.Series.ID}}/delete" class="inline-form">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <button type="submit">Delete series</button>
+</form>
+{{end}}

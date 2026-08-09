@@ -1,0 +1,49 @@
+{{define "content"}}
+<h1>Series <span class="muted">(playlists)</span></h1>
+<p class="muted">Group content items into an ordered series with arc notes. Progress shows published episodes vs planned; maps to a YouTube playlist at publish.</p>
+
+{{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+
+{{if .HasChannels}}
+<form method="post" action="/series" class="stack">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <p>
+    <label for="channel_id">Channel</label>
+    <select id="channel_id" name="channel_id" required>
+      {{range .Channels}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+    </select>
+  </p>
+  <p>
+    <label for="name">Name</label>
+    <input id="name" name="name" required maxlength="200" autocomplete="off">
+  </p>
+  <p>
+    <label for="description">Description</label>
+    <textarea id="description" name="description" rows="2" autocomplete="off"></textarea>
+  </p>
+  <p><button type="submit">Add series</button></p>
+</form>
+{{else}}
+<p>Create a <a href="/channels">channel</a> first, then you can plan a series.</p>
+{{end}}
+
+{{if .Series}}
+<table>
+  <thead>
+    <tr><th scope="col">Series</th><th scope="col">Channel</th><th scope="col">Progress</th></tr>
+  </thead>
+  <tbody>
+    {{range .Series}}
+    <tr>
+      <td><a href="/series/{{.ID}}">{{.Name}}</a>
+        {{if .Description}}<div class="muted">{{.Description}}</div>{{end}}</td>
+      <td>{{.ChannelName}}</td>
+      <td>{{.DoneCount}} / {{.EpisodeCount}} published</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{else}}
+<p>No series yet. Plan your first one above.</p>
+{{end}}
+{{end}}
