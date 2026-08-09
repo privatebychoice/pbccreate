@@ -1,0 +1,26 @@
+{{define "content"}}
+<p><a href="/profiles">← Back to profiles</a></p>
+
+<h1>{{.Profile.Name}}</h1>
+<p class="muted">{{humanize .Profile.Kind}} · {{.Profile.ChannelName}}</p>
+
+{{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+
+<form method="post" action="/profiles/{{.Profile.ID}}" class="stack">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <p>
+    <label for="name">Name</label>
+    <input id="name" name="name" required maxlength="200" value="{{.Profile.Name}}" autocomplete="off">
+  </p>
+  <p>
+    <label for="details">Details</label>
+    <textarea id="details" name="details" rows="4" autocomplete="off">{{.Profile.Details}}</textarea>
+  </p>
+  <p><button type="submit">Save profile</button></p>
+</form>
+
+<form method="post" action="/profiles/{{.Profile.ID}}/delete" class="inline-form">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <button type="submit">Delete profile</button>
+</form>
+{{end}}

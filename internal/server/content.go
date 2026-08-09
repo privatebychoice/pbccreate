@@ -315,6 +315,31 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	itemGear, err := store.ListProfilesForItem(r.Context(), s.db, item.ID, "gear")
+	if err != nil {
+		s.log.Error("list item gear", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	itemLocations, err := store.ListProfilesForItem(r.Context(), s.db, item.ID, "location")
+	if err != nil {
+		s.log.Error("list item locations", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	channelGear, err := store.ListProfilesForChannel(r.Context(), s.db, item.ChannelID, "gear")
+	if err != nil {
+		s.log.Error("list channel gear", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	channelLocations, err := store.ListProfilesForChannel(r.Context(), s.db, item.ChannelID, "location")
+	if err != nil {
+		s.log.Error("list channel locations", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
 	thumbs, err := store.ListThumbnails(r.Context(), s.db, item.ID)
 	if err != nil {
 		s.log.Error("list thumbnails", "err", err, "id", id)
@@ -396,6 +421,10 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		"Retrospective":       retro,
 		"ChecklistTemplates":  checklistTemplates,
 		"ChecklistRuns":       checklistRuns,
+		"ItemGear":            itemGear,
+		"ItemLocations":       itemLocations,
+		"ChannelGear":         channelGear,
+		"ChannelLocations":    channelLocations,
 	}
 	if err := s.tmpl.render(w, http.StatusOK, "content_detail.html.tmpl", data); err != nil {
 		s.log.Error("render content detail", "err", err)

@@ -1,0 +1,72 @@
+{{define "content"}}
+<h1>Profiles <span class="muted">(gear &amp; locations)</span></h1>
+<p class="muted">Reusable gear setups and location/set profiles. Assign them to a content item from its detail page to recall the setup per shoot.</p>
+
+{{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+
+{{if .HasChannels}}
+<form method="post" action="/profiles" class="stack">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <p>
+    <label for="channel_id">Channel</label>
+    <select id="channel_id" name="channel_id" required>
+      {{range .Channels}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+    </select>
+  </p>
+  <p>
+    <label for="kind">Kind</label>
+    <select id="kind" name="kind">
+      <option value="gear">Gear</option>
+      <option value="location">Location</option>
+    </select>
+  </p>
+  <p>
+    <label for="name">Name</label>
+    <input id="name" name="name" required maxlength="200" autocomplete="off">
+  </p>
+  <p>
+    <label for="details">Details <span class="muted">(gear: camera/lens/mic/lighting/settings · location: power/noise/golden-hour/permissions)</span></label>
+    <textarea id="details" name="details" rows="3" autocomplete="off"></textarea>
+  </p>
+  <p><button type="submit">Add profile</button></p>
+</form>
+{{else}}
+<p>Create a <a href="/channels">channel</a> first, then you can define profiles.</p>
+{{end}}
+
+<h2>Gear</h2>
+{{if .Gear}}
+<table>
+  <thead><tr><th scope="col">Name</th><th scope="col">Channel</th><th scope="col">Details</th></tr></thead>
+  <tbody>
+    {{range .Gear}}
+    <tr>
+      <td><a href="/profiles/{{.ID}}">{{.Name}}</a></td>
+      <td>{{.ChannelName}}</td>
+      <td class="muted">{{.Details}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{else}}
+<p>No gear profiles yet.</p>
+{{end}}
+
+<h2>Locations</h2>
+{{if .Locations}}
+<table>
+  <thead><tr><th scope="col">Name</th><th scope="col">Channel</th><th scope="col">Notes</th></tr></thead>
+  <tbody>
+    {{range .Locations}}
+    <tr>
+      <td><a href="/profiles/{{.ID}}">{{.Name}}</a></td>
+      <td>{{.ChannelName}}</td>
+      <td class="muted">{{.Details}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{else}}
+<p>No location profiles yet.</p>
+{{end}}
+{{end}}

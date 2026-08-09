@@ -273,6 +273,62 @@
   </form>
 </section>
 
+<section aria-labelledby="gear-heading">
+  <h2 id="gear-heading">Gear <span class="muted">(setup used)</span></h2>
+  {{if .ItemGear}}
+  <ul class="chips">
+    {{range .ItemGear}}
+    <li>
+      <span><a href="/profiles/{{.ID}}">{{.Name}}</a></span>
+      <form method="post" action="/content/{{$.Item.ID}}/profiles/{{.ID}}/remove" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+        <button type="submit" aria-label="Remove gear {{.Name}}">✕</button>
+      </form>
+    </li>
+    {{end}}
+  </ul>
+  {{else}}
+  <p>No gear assigned.</p>
+  {{end}}
+  <form method="post" action="/content/{{.Item.ID}}/profiles" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <input type="hidden" name="kind" value="gear">
+    <input name="name" placeholder="Assign gear profile" required maxlength="200" list="channel-gear" autocomplete="off">
+    <datalist id="channel-gear">
+      {{range .ChannelGear}}<option value="{{.Name}}"></option>{{end}}
+    </datalist>
+    <button type="submit">Assign gear</button>
+  </form>
+</section>
+
+<section aria-labelledby="location-heading">
+  <h2 id="location-heading">Location <span class="muted">(set)</span></h2>
+  {{if .ItemLocations}}
+  <ul class="chips">
+    {{range .ItemLocations}}
+    <li>
+      <span><a href="/profiles/{{.ID}}">{{.Name}}</a></span>
+      <form method="post" action="/content/{{$.Item.ID}}/profiles/{{.ID}}/remove" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+        <button type="submit" aria-label="Remove location {{.Name}}">✕</button>
+      </form>
+    </li>
+    {{end}}
+  </ul>
+  {{else}}
+  <p>No location assigned.</p>
+  {{end}}
+  <form method="post" action="/content/{{.Item.ID}}/profiles" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <input type="hidden" name="kind" value="location">
+    <input name="name" placeholder="Assign location profile" required maxlength="200" list="channel-locations" autocomplete="off">
+    <datalist id="channel-locations">
+      {{range .ChannelLocations}}<option value="{{.Name}}"></option>{{end}}
+    </datalist>
+    <button type="submit">Assign location</button>
+  </form>
+</section>
+
 <section aria-labelledby="labels-heading">
   <h2 id="labels-heading">Labels <span class="muted">(internal)</span></h2>
 
