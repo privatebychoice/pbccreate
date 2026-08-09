@@ -182,6 +182,20 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	itemTags, err := store.ListTagsForItem(r.Context(), s.db, item.ID)
+	if err != nil {
+		s.log.Error("list item tags", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	channelTags, err := store.ListTagsForChannel(r.Context(), s.db, item.ChannelID)
+	if err != nil {
+		s.log.Error("list channel tags", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	tagCSV := tagNamesCSV(itemTags)
+
 	thumbs, err := store.ListThumbnails(r.Context(), s.db, item.ID)
 	if err != nil {
 		s.log.Error("list thumbnails", "err", err, "id", id)
@@ -234,6 +248,10 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		"Thumbnails":          thumbs,
 		"Placements":          placementViews,
 		"CampaignOptions":     campaignOptions,
+		"ItemTags":            itemTags,
+		"ChannelTags":         channelTags,
+		"TagList":             tagCSV,
+		"TagLen":              len(tagCSV),
 	}
 	if err := s.tmpl.render(w, http.StatusOK, "content_detail.html.tmpl", data); err != nil {
 		s.log.Error("render content detail", "err", err)

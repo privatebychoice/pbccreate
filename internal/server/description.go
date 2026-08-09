@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"unicode"
 
 	"go.privatebychoice.com/pbccreate/internal/store"
 )
@@ -113,6 +114,58 @@ func generateSponsorBlurb(placements []store.Placement) string {
 		parts = append(parts, b.String())
 	}
 	return strings.Join(parts, "\n\n")
+}
+
+// handleDescriptionHashtags regenerates the hashtags block from the item's tags,
+// preserving the other blocks.
+func (s *Server) handleDescriptionHashtags(w http.ResponseWriter, r *http.Request) {
+	id, ok := s.requireContentItem(w, r)
+	if !ok {
+		return
+	}
+	tags, err := store.ListTagsForItem(r.Context(), s.db, id)
+	if err != nil {
+		s.log.Error("list tags for hashtags", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	desc, err := store.GetDescription(r.Context(), s.db, id)
+	if err != nil {
+		s.log.Error("get description", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	desc.Hashtags = generateHashtags(tags)
+	if _, err := store.SaveDescription(r.Context(), s.db, desc); err != nil {
+		s.log.Error("save description hashtags", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	s.redirectToItem(w, r, id)
+}
+
+// generateHashtags turns tags into space-separated hashtags, dropping any that
+// reduce to just "#".
+func generateHashtags(tags []store.Tag) string {
+	parts := make([]string, 0, len(tags))
+	for _, t := range tags {
+		if h := hashtagify(t.Name); len(h) > 1 {
+			parts = append(parts, h)
+		}
+	}
+	return strings.Join(parts, " ")
+}
+
+// hashtagify builds a "#word" from a tag name, keeping only letters and digits.
+func hashtagify(name string) string {
+	var b strings.Builder
+	b.WriteByte('#')
+	for _, r := range name {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
 
 // generateChapters renders outline segments as YouTube-style chapter lines,

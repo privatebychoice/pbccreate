@@ -152,6 +152,19 @@ th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var
   vertical-align: middle;
 }
 
+/* Tag chips */
+ul.chips { list-style: none; display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0; margin: 0.5rem 0; }
+ul.chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  font-size: 0.85rem;
+}
+ul.chips button { background: transparent; border: 0; color: var(--muted); cursor: pointer; padding: 0; }
+
 textarea.rendered {
   width: 100%;
   max-width: 48rem;

@@ -173,6 +173,38 @@
   </form>
 </section>
 
+<section aria-labelledby="tags-heading">
+  <h2 id="tags-heading">Tags <span class="muted">(SEO keywords)</span></h2>
+
+  {{if .ItemTags}}
+  <ul class="chips">
+    {{range .ItemTags}}
+    <li>
+      <span>{{.Name}}</span>
+      <form method="post" action="/content/{{$.Item.ID}}/tags/{{.ID}}/remove" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+        <button type="submit" aria-label="Remove tag {{.Name}}">✕</button>
+      </form>
+    </li>
+    {{end}}
+  </ul>
+  <p class="muted">{{.TagLen}} / 500 characters</p>
+  <textarea id="tag-list" class="rendered" readonly rows="2" aria-label="Tag list">{{.TagList}}</textarea>
+  <p><button type="button" data-copy="tag-list">Copy tags</button></p>
+  {{else}}
+  <p>No tags yet.</p>
+  {{end}}
+
+  <form method="post" action="/content/{{.Item.ID}}/tags" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <input name="name" placeholder="Add a keyword" required maxlength="100" list="channel-tags" autocomplete="off">
+    <datalist id="channel-tags">
+      {{range .ChannelTags}}<option value="{{.Name}}"></option>{{end}}
+    </datalist>
+    <button type="submit">Add tag</button>
+  </form>
+</section>
+
 <section aria-labelledby="desc-heading">
   <h2 id="desc-heading">Description</h2>
 
@@ -215,6 +247,12 @@
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <button type="submit">Fill sponsor blurb from placements</button>
     <span class="muted">Overwrites the sponsor block; save other edits first.</span>
+  </form>
+
+  <form method="post" action="/content/{{.Item.ID}}/description/hashtags" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <button type="submit">Fill hashtags from tags</button>
+    <span class="muted">Overwrites the hashtags block; save other edits first.</span>
   </form>
 
   <h3>Preview</h3>
