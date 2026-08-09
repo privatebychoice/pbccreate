@@ -268,6 +268,13 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	musicCues, err := store.ListMusicCues(r.Context(), s.db, item.ID)
+	if err != nil {
+		s.log.Error("list music cues", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
 	providers, err := store.ListAssetProviders(r.Context(), s.db)
 	if err != nil {
 		s.log.Error("list asset providers", "err", err, "id", id)
@@ -415,6 +422,7 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		"Attributions":        attributions,
 		"AttributionKinds":    store.AttributionKinds,
 		"LicenseFiles":        licenseFiles,
+		"MusicCues":           musicCues,
 		"Providers":           providers,
 		"Publications":        publications,
 		"Visibilities":        store.Visibilities,

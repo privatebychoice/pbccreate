@@ -518,6 +518,94 @@
   </form>
 </section>
 
+<section aria-labelledby="cues-heading">
+  <h2 id="cues-heading">Music cues <span class="muted">(cue sheet)</span></h2>
+  <p class="muted">Track list with in/out points and license — useful for Content ID. Turn a cue into a music attribution so its credit reaches the description.</p>
+
+  {{if .MusicCues}}
+  <table>
+    <thead>
+      <tr><th>Track</th><th>In–Out</th><th>License</th><th>Provider</th><th></th><th></th></tr>
+    </thead>
+    <tbody>
+      {{range .MusicCues}}
+      <tr>
+        <td>{{.Title}}{{if .Artist}} <span class="muted">— {{.Artist}}</span>{{end}}
+          {{if .MediaFilename}}<div class="muted path">{{.MediaFilename}}</div>{{end}}
+          {{if .Notes}}<div class="muted">{{.Notes}}</div>{{end}}</td>
+        <td class="muted">{{if or .InPoint .OutPoint}}{{.InPoint}}–{{.OutPoint}}{{else}}—{{end}}</td>
+        <td>{{if .License}}{{.License}}{{else}}<span class="muted">—</span>{{end}}</td>
+        <td>{{if .ProviderName}}{{.ProviderName}}{{else}}<span class="muted">—</span>{{end}}</td>
+        <td>
+          <form method="post" action="/content/{{$.Item.ID}}/music-cues/{{.ID}}/attribution" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" aria-label="Add '{{.Title}}' as a music attribution">→ attribution</button>
+          </form>
+        </td>
+        <td>
+          <form method="post" action="/content/{{$.Item.ID}}/music-cues/{{.ID}}/delete" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" aria-label="Delete cue '{{.Title}}'">✕</button>
+          </form>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p>No music cues yet.</p>
+  {{end}}
+
+  <form method="post" action="/content/{{.Item.ID}}/music-cues" class="stack">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <p>
+      <label for="cue-title">Track title</label>
+      <input id="cue-title" name="title" required maxlength="200" autocomplete="off">
+    </p>
+    <p>
+      <label for="cue-artist">Artist</label>
+      <input id="cue-artist" name="artist" maxlength="200" autocomplete="off">
+    </p>
+    <div class="inline-form">
+      <span>
+        <label for="cue-in">In point</label>
+        <input id="cue-in" name="in_point" maxlength="20" placeholder="0:00" autocomplete="off">
+      </span>
+      <span>
+        <label for="cue-out">Out point</label>
+        <input id="cue-out" name="out_point" maxlength="20" placeholder="1:23" autocomplete="off">
+      </span>
+    </div>
+    <p>
+      <label for="cue-license">License</label>
+      <input id="cue-license" name="license" maxlength="200" placeholder="e.g. licensed, royalty-free" autocomplete="off">
+    </p>
+    {{if .Providers}}
+    <p>
+      <label for="cue-provider">Provider <span class="muted">(optional, §5.20)</span></label>
+      <select id="cue-provider" name="provider_id">
+        <option value="">— none —</option>
+        {{range .Providers}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+      </select>
+    </p>
+    {{end}}
+    {{if .Media}}
+    <p>
+      <label for="cue-media">Linked media asset <span class="muted">(optional)</span></label>
+      <select id="cue-media" name="media_asset_id">
+        <option value="">— none —</option>
+        {{range .Media}}<option value="{{.ID}}">{{.Filename}}</option>{{end}}
+      </select>
+    </p>
+    {{end}}
+    <p>
+      <label for="cue-notes">Notes</label>
+      <input id="cue-notes" name="notes" maxlength="300" autocomplete="off">
+    </p>
+    <p><button type="submit">Add cue</button></p>
+  </form>
+</section>
+
 <section aria-labelledby="lic-heading">
   <h2 id="lic-heading">License files <span class="muted">(legal documents on disk)</span></h2>
   <p class="muted">Keep license certificates, receipts, or terms for this project. Files are stored locally and downloaded, never opened in the browser. This is separate from the credit text above.</p>
