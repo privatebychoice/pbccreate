@@ -52,6 +52,39 @@ main {
 
 a { color: var(--accent); }
 .brand { font-weight: 600; text-decoration: none; }
+nav a { margin-inline-end: 1rem; }
+
+.stack p { margin: 0 0 0.75rem; }
+.stack label { display: block; font-weight: 600; margin-block-end: 0.25rem; }
+.stack input {
+  width: 100%;
+  max-width: 24rem;
+  padding: 0.4rem 0.5rem;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+button {
+  padding: 0.45rem 0.9rem;
+  color: #fff;
+  background: var(--accent);
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.error {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #c0392b;
+  border-radius: 4px;
+  color: #c0392b;
+  background: color-mix(in srgb, #c0392b 8%, transparent);
+}
+
+table { border-collapse: collapse; width: 100%; margin-block-start: 1.5rem; }
+th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); }
 
 :focus-visible {
   outline: 2px solid var(--accent);

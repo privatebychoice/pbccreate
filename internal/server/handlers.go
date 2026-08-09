@@ -14,7 +14,7 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 		"Build":     buildinfo.Build,
 		"CSRFToken": csrfToken(r),
 	}
-	if err := s.tmpl.render(w, "home.html.tmpl", data); err != nil {
+	if err := s.tmpl.render(w, http.StatusOK, "home.html.tmpl", data); err != nil {
 		s.log.Error("render home", "err", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	}

@@ -1,0 +1,42 @@
+{{define "content"}}
+<h1>Channels</h1>
+
+{{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+
+<form method="post" action="/channels" class="stack">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <p>
+    <label for="name">Name</label>
+    <input id="name" name="name" required maxlength="200" autocomplete="off">
+  </p>
+  <p>
+    <label for="kind">Kind</label>
+    <input id="kind" name="kind" list="channel-kinds" maxlength="50" autocomplete="off" placeholder="e.g. youtube">
+    <datalist id="channel-kinds">
+      <option value="youtube"></option>
+      <option value="blog"></option>
+      <option value="mastodon"></option>
+    </datalist>
+  </p>
+  <p><button type="submit">Add channel</button></p>
+</form>
+
+{{if .Channels}}
+<table>
+  <thead>
+    <tr><th scope="col">Name</th><th scope="col">Kind</th><th scope="col">Created</th></tr>
+  </thead>
+  <tbody>
+    {{range .Channels}}
+    <tr>
+      <td>{{.Name}}</td>
+      <td>{{.Kind}}</td>
+      <td>{{if not .CreatedAt.IsZero}}{{.CreatedAt.Format "2006-01-02"}}{{end}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{else}}
+<p>No channels yet. Add your first one above.</p>
+{{end}}
+{{end}}

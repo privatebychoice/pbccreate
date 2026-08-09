@@ -48,9 +48,9 @@ func parseTemplates(fsys fs.FS) (*templates, error) {
 	return &templates{pages: set}, nil
 }
 
-// render writes the named page. It buffers first so a template error yields a
-// clean 500 rather than a half-written response.
-func (t *templates) render(w http.ResponseWriter, page string, data any) error {
+// render writes the named page with the given HTTP status. It buffers first so a
+// template error yields a clean 500 rather than a half-written response.
+func (t *templates) render(w http.ResponseWriter, status int, page string, data any) error {
 	tmpl, ok := t.pages[page]
 	if !ok {
 		return fmt.Errorf("unknown page %q", page)
@@ -60,6 +60,7 @@ func (t *templates) render(w http.ResponseWriter, page string, data any) error {
 		return fmt.Errorf("execute %s: %w", page, err)
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
 	_, err := buf.WriteTo(w)
 	return err
 }

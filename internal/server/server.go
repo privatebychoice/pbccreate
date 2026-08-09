@@ -46,6 +46,8 @@ func (s *Server) routes() http.Handler {
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(web.StaticFS())))
 	mux.HandleFunc("GET /version", s.handleVersion)
 	mux.HandleFunc("GET /{$}", s.handleHome)
+	mux.HandleFunc("GET /channels", s.handleChannelsList)
+	mux.HandleFunc("POST /channels", s.handleChannelsCreate)
 	// Middleware order: security headers outermost, then CSRF/same-origin.
 	return s.securityHeaders(s.csrf(mux))
 }
