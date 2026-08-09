@@ -1,0 +1,48 @@
+{{define "content"}}
+<p><a href="/content/{{.ContentItemID}}">← Back to item</a></p>
+
+<h1>Thumbnail: {{.Name}}</h1>
+
+<img class="thumb-preview" src="/content/{{.ContentItemID}}/thumbnails/{{.ThumbID}}/render.png"
+     alt="Thumbnail preview (1280×720)" width="640">
+
+<form method="post" action="/content/{{.ContentItemID}}/thumbnails/{{.ThumbID}}" class="stack">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <p>
+    <label for="background">Background color</label>
+    <input id="background" name="background" type="color" value="{{.Background}}">
+  </p>
+  <fieldset>
+    <legend>Title text</legend>
+    <p>
+      <label for="text">Text <span class="muted">(blank = no title)</span></label>
+      <textarea id="text" name="text" rows="2" autocomplete="off">{{.Text}}</textarea>
+    </p>
+    <p>
+      <label for="color">Text color</label>
+      <input id="color" name="color" type="color" value="{{.Color}}">
+    </p>
+    <p>
+      <label for="font_size">Font size</label>
+      <input id="font_size" name="font_size" type="number" min="8" max="400" value="{{.FontSize}}">
+    </p>
+    <p>
+      <label for="pos_x">X</label>
+      <input id="pos_x" name="pos_x" type="number" min="0" max="1280" value="{{.X}}">
+      <label for="pos_y">Y</label>
+      <input id="pos_y" name="pos_y" type="number" min="0" max="720" value="{{.Y}}">
+    </p>
+    <p>
+      <label><input type="checkbox" name="bold" {{if .Bold}}checked{{end}}> Bold</label>
+    </p>
+  </fieldset>
+  <p><button type="submit">Save &amp; preview</button></p>
+</form>
+
+<form method="post" action="/content/{{.ContentItemID}}/thumbnails/{{.ThumbID}}/delete" class="inline-form">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <button type="submit">Delete thumbnail</button>
+</form>
+
+<p class="muted">A drag-and-drop canvas editor with image layers, gradients, and safe-zone guides arrives in a later slice.</p>
+{{end}}

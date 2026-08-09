@@ -175,6 +175,13 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	thumbs, err := store.ListThumbnails(r.Context(), s.db, item.ID)
+	if err != nil {
+		s.log.Error("list thumbnails", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
 	data := map[string]any{
 		"Title":               item.Title,
 		"Build":               buildinfo.Build,
@@ -194,6 +201,7 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		"Notice":              notice,
 		"Description":         desc,
 		"DescriptionRendered": desc.Render(),
+		"Thumbnails":          thumbs,
 	}
 	if err := s.tmpl.render(w, http.StatusOK, "content_detail.html.tmpl", data); err != nil {
 		s.log.Error("render content detail", "err", err)

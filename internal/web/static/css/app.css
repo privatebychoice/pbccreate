@@ -225,6 +225,29 @@ img.thumb {
   border-radius: 4px;
   margin-block-end: 0.35rem;
 }
+
+/* Thumbnails */
+.thumb-grid { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-block: 1rem; }
+.thumb-card { display: block; text-decoration: none; color: var(--fg); }
+.thumb-card img {
+  display: block;
+  width: 240px;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.thumb-card span { display: block; margin-block-start: 0.25rem; font-size: 0.9rem; }
+img.thumb-preview {
+  display: block;
+  width: 100%;
+  max-width: 640px;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-block: 1rem;
+}
+fieldset { border: 1px solid var(--border); border-radius: 6px; margin-block: 0.75rem; }
+legend { font-weight: 600; padding-inline: 0.35rem; }
 tr.missing { background: color-mix(in srgb, #c0392b 8%, transparent); }
 .badge-missing {
   display: inline-block;

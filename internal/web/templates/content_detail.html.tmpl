@@ -338,5 +338,27 @@
   </form>
 </section>
 
-<p class="muted">Thumbnails and more attach here in later slices.</p>
+<section aria-labelledby="thumb-heading">
+  <h2 id="thumb-heading">Thumbnails</h2>
+  {{if .Thumbnails}}
+  <div class="thumb-grid">
+    {{range .Thumbnails}}
+    <a class="thumb-card" href="/content/{{$.Item.ID}}/thumbnails/{{.ID}}">
+      <img src="/content/{{$.Item.ID}}/thumbnails/{{.ID}}/render.png" alt="{{.Name}}" width="240" loading="lazy">
+      <span>{{.Name}}</span>
+    </a>
+    {{end}}
+  </div>
+  {{end}}
+  <form method="post" action="/content/{{.Item.ID}}/thumbnails" class="stack">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <p>
+      <label for="thumb-name">New thumbnail name</label>
+      <input id="thumb-name" name="name" required maxlength="120" autocomplete="off">
+    </p>
+    <p><button type="submit">Create thumbnail</button></p>
+  </form>
+</section>
+
+<p class="muted">More features attach here in later slices.</p>
 {{end}}
