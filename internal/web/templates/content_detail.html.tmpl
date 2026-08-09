@@ -178,6 +178,46 @@
       </div>
       {{end}}
       {{if .Notes}}<p class="muted seg-notes">{{.Notes}}</p>{{end}}
+
+      <details class="takes">
+        <summary>Takes{{if .Takes}} ({{len .Takes}}){{end}}</summary>
+        {{if .Takes}}
+        <ul class="checklist">
+          {{range .Takes}}
+          <li>
+            <form method="post" action="/content/{{$.Item.ID}}/shots/{{.ShotID}}/takes/{{.ID}}/circle" class="inline-form">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+              <button type="submit" aria-label="Toggle circle take">{{if .Circled}}★{{else}}☆{{end}}</button>
+            </form>
+            <span{{if .Circled}} class="circled"{{end}}>
+              {{if .Label}}{{.Label}}{{else}}Take{{end}}{{if .Rating}} · {{.Rating}}/5{{end}}{{if .MediaFilename}} · {{.MediaFilename}}{{end}}{{if .Notes}} — {{.Notes}}{{end}}
+            </span>
+            <form method="post" action="/content/{{$.Item.ID}}/shots/{{.ShotID}}/takes/{{.ID}}/delete" class="inline-form">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+              <button type="submit" aria-label="Delete take">✕</button>
+            </form>
+          </li>
+          {{end}}
+        </ul>
+        {{end}}
+        <form method="post" action="/content/{{$.Item.ID}}/shots/{{.ID}}/takes" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <input name="label" placeholder="Take label" maxlength="120" autocomplete="off">
+          <label class="sr-only" for="take-rating-{{.ID}}">Rating 0-5</label>
+          <input id="take-rating-{{.ID}}" name="rating" type="number" min="0" max="5" placeholder="0-5" inputmode="numeric">
+          {{if $.Media}}
+          <label class="sr-only" for="take-media-{{.ID}}">Linked media</label>
+          <select id="take-media-{{.ID}}" name="media_asset_id">
+            <option value="">— media —</option>
+            {{range $.Media}}<option value="{{.ID}}">{{.Filename}}</option>{{end}}
+          </select>
+          {{end}}
+          <input name="notes" placeholder="Notes" maxlength="300" autocomplete="off">
+          <label><input type="checkbox" name="circled" value="1"> Circle</label>
+          <button type="submit">Add take</button>
+        </form>
+      </details>
+
       <div class="card-actions">
         <form method="post" action="/content/{{$.Item.ID}}/shots/{{.ID}}/move">
           <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">

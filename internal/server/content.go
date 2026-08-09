@@ -202,6 +202,16 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+	takesByShot, err := store.TakesByShot(r.Context(), s.db, item.ID)
+	if err != nil {
+		s.log.Error("takes by shot", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	shotViews := make([]shotView, 0, len(shots))
+	for _, sh := range shots {
+		shotViews = append(shotViews, shotView{Shot: sh, Takes: takesByShot[sh.ID]})
+	}
 
 	assets, err := store.ListMediaAssets(r.Context(), s.db, item.ID)
 	if err != nil {
@@ -355,7 +365,7 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		"Script":              script,
 		"Segments":            rows,
 		"OutlineTotalSeconds": total,
-		"Shots":               shots,
+		"Shots":               shotViews,
 		"ShotStatuses":        store.ShotStatuses,
 		"Media":               assets,
 		"MediaStatuses":       store.MediaStatuses,
