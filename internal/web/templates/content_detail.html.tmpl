@@ -33,7 +33,7 @@
     </li>
     {{end}}
   </ul>
-  <p class="muted">Output-file recording and marking the item published (with override) arrive with the publication record.</p>
+  <p class="muted">Marking the item published with an override reason is planned; for now use the Status control above.</p>
 </section>
 
 <section aria-labelledby="script-heading">
@@ -684,5 +684,98 @@
   </form>
 </section>
 
-<p class="muted">More features attach here in later slices.</p>
+<section aria-labelledby="pub-heading">
+  <h2 id="pub-heading">Publications <span class="muted">(per platform)</span></h2>
+  <p class="muted">Record where this item was posted. Metrics are entered by hand — pbccreate makes no network calls.</p>
+
+  {{if .Publications}}
+  {{range $pub := .Publications}}
+  <form method="post" action="/content/{{$.Item.ID}}/publications/{{.ID}}" class="placement stack">
+    <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+    <div class="seg-head">
+      <strong>{{if .Platform}}{{.Platform}}{{else}}(platform){{end}}</strong>
+      <span class="muted">{{if .Visibility}}{{humanize .Visibility}}{{end}}{{if .PostedOn}} · {{.PostedOn}}{{end}}</span>
+    </div>
+    <p>
+      <label for="pub-platform-{{.ID}}">Platform</label>
+      <input id="pub-platform-{{.ID}}" name="platform" required maxlength="100" value="{{.Platform}}" list="platform-suggestions" autocomplete="off">
+    </p>
+    <p>
+      <label for="pub-title-{{.ID}}">Published title</label>
+      <input id="pub-title-{{.ID}}" name="published_title" maxlength="300" value="{{.PublishedTitle}}" autocomplete="off">
+    </p>
+    <p>
+      <label for="pub-extid-{{.ID}}">External video ID</label>
+      <input id="pub-extid-{{.ID}}" name="external_id" maxlength="200" value="{{.ExternalID}}" autocomplete="off">
+    </p>
+    <p>
+      <label for="pub-url-{{.ID}}">URL</label>
+      <input id="pub-url-{{.ID}}" name="url" type="url" maxlength="500" value="{{.URL}}" autocomplete="off">
+    </p>
+    <p>
+      <label for="pub-output-{{.ID}}">Output file <span class="muted">(rendered master path)</span></label>
+      <input id="pub-output-{{.ID}}" name="output_file" maxlength="1000" value="{{.OutputFile}}" autocomplete="off" spellcheck="false">
+    </p>
+    <p>
+      <label for="pub-posted-{{.ID}}">Posted on</label>
+      <input id="pub-posted-{{.ID}}" name="posted_on" type="date" value="{{.PostedOn}}">
+    </p>
+    <p>
+      <label for="pub-vis-{{.ID}}">Visibility</label>
+      <select id="pub-vis-{{.ID}}" name="visibility">
+        <option value="">— none —</option>
+        {{range $.Visibilities}}<option value="{{.}}"{{if eq . $pub.Visibility}} selected{{end}}>{{humanize .}}</option>{{end}}
+      </select>
+    </p>
+    <p>
+      <label for="pub-tags-{{.ID}}">Tag snapshot <span class="muted">(optional; tags used if they differed)</span></label>
+      <textarea id="pub-tags-{{.ID}}" name="tags_snapshot" rows="2" autocomplete="off">{{.TagsSnapshot}}</textarea>
+    </p>
+    <p>
+      <label for="pub-notes-{{.ID}}">Notes</label>
+      <textarea id="pub-notes-{{.ID}}" name="notes" rows="2" autocomplete="off">{{.Notes}}</textarea>
+    </p>
+    <p><button type="submit">Save publication</button></p>
+    <div class="inline-form">
+      <button type="submit" formaction="/content/{{$.Item.ID}}/publications/{{.ID}}/delete" aria-label="Delete publication">Delete</button>
+    </div>
+  </form>
+  {{end}}
+  {{else}}
+  <p>No publications recorded yet.</p>
+  {{end}}
+
+  <datalist id="platform-suggestions">
+    <option value="YouTube"></option>
+    <option value="Blog"></option>
+    <option value="Instagram"></option>
+    <option value="TikTok"></option>
+    <option value="X"></option>
+  </datalist>
+
+  <h3>Add a publication</h3>
+  <form method="post" action="/content/{{.Item.ID}}/publications" class="stack">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <p>
+      <label for="pub-platform-new">Platform</label>
+      <input id="pub-platform-new" name="platform" required maxlength="100" list="platform-suggestions" autocomplete="off">
+    </p>
+    <p>
+      <label for="pub-output-new">Output file <span class="muted">(rendered master path)</span></label>
+      <input id="pub-output-new" name="output_file" maxlength="1000" autocomplete="off" spellcheck="false">
+    </p>
+    <p>
+      <label for="pub-posted-new">Posted on</label>
+      <input id="pub-posted-new" name="posted_on" type="date">
+    </p>
+    <p>
+      <label for="pub-vis-new">Visibility</label>
+      <select id="pub-vis-new" name="visibility">
+        <option value="">— none —</option>
+        {{range .Visibilities}}<option value="{{.}}">{{humanize .}}</option>{{end}}
+      </select>
+    </p>
+    <p><button type="submit">Add publication</button></p>
+  </form>
+</section>
 {{end}}

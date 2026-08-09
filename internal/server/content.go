@@ -265,6 +265,13 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	publications, err := store.ListPublications(r.Context(), s.db, item.ID)
+	if err != nil {
+		s.log.Error("list publications", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
 	thumbs, err := store.ListThumbnails(r.Context(), s.db, item.ID)
 	if err != nil {
 		s.log.Error("list thumbnails", "err", err, "id", id)
@@ -301,6 +308,7 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		Thumbnails:   thumbs,
 		RenderedDesc: desc.Render(),
 		Tags:         itemTags,
+		Publications: publications,
 	})
 
 	data := map[string]any{
@@ -338,6 +346,8 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		"AttributionKinds":    store.AttributionKinds,
 		"LicenseFiles":        licenseFiles,
 		"Providers":           providers,
+		"Publications":        publications,
+		"Visibilities":        store.Visibilities,
 	}
 	if err := s.tmpl.render(w, http.StatusOK, "content_detail.html.tmpl", data); err != nil {
 		s.log.Error("render content detail", "err", err)

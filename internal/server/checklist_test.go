@@ -13,6 +13,7 @@ func TestBuildChecklist(t *testing.T) {
 		Thumbnails:   []store.Thumbnail{{ID: 1}},
 		RenderedDesc: "Intro text",
 		Tags:         []store.Tag{{Name: "privacy"}},
+		Publications: []store.Publication{{OutputFile: "/masters/final.mp4"}},
 	}
 
 	tests := []struct {
@@ -31,6 +32,7 @@ func TestBuildChecklist(t *testing.T) {
 				"Attributions":         checkOK,
 				"Thumbnail":            checkOK,
 				"Description & tags":   checkOK,
+				"Output file":          checkOK,
 			},
 		},
 		{
@@ -41,6 +43,7 @@ func TestBuildChecklist(t *testing.T) {
 				in.Thumbnails = nil
 				in.RenderedDesc = ""
 				in.Tags = nil
+				in.Publications = nil
 			},
 			wantReady: false,
 			wantStates: map[string]checkState{
@@ -48,6 +51,7 @@ func TestBuildChecklist(t *testing.T) {
 				"Attributions":         checkNA,
 				"Thumbnail":            checkFail,
 				"Description & tags":   checkFail,
+				"Output file":          checkFail,
 			},
 		},
 		{
@@ -73,6 +77,14 @@ func TestBuildChecklist(t *testing.T) {
 			},
 			wantReady:  false,
 			wantStates: map[string]checkState{"Description & tags": checkFail},
+		},
+		{
+			name: "publication without an output file blocks readiness",
+			mutate: func(in *checklistInput) {
+				in.Publications = []store.Publication{{Platform: "YouTube"}}
+			},
+			wantReady:  false,
+			wantStates: map[string]checkState{"Output file": checkFail},
 		},
 	}
 

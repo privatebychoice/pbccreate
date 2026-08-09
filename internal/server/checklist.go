@@ -32,6 +32,7 @@ type checklistInput struct {
 	Thumbnails   []store.Thumbnail
 	RenderedDesc string
 	Tags         []store.Tag
+	Publications []store.Publication
 }
 
 // buildChecklist computes the pre-publish readiness view and whether the item is
@@ -46,6 +47,7 @@ func buildChecklist(in checklistInput) (items []checkItem, ready bool) {
 		attributionCheck(in.Attributions),
 		thumbnailCheck(in.Thumbnails),
 		descriptionCheck(in.RenderedDesc, in.Tags),
+		outputFileCheck(in.Publications),
 	}
 	ready = true
 	for _, it := range items {
@@ -120,6 +122,22 @@ func thumbnailCheck(thumbs []store.Thumbnail) checkItem {
 	}
 	c.State = checkOK
 	c.Detail = fmt.Sprintf("%d design(s) ready to export.", len(thumbs))
+	return c
+}
+
+// outputFileCheck passes when at least one publication record has a rendered
+// output file recorded (§5.12) — the master that actually ships.
+func outputFileCheck(pubs []store.Publication) checkItem {
+	c := checkItem{Label: "Output file"}
+	for _, p := range pubs {
+		if strings.TrimSpace(p.OutputFile) != "" {
+			c.State = checkOK
+			c.Detail = "Output file recorded on a publication."
+			return c
+		}
+	}
+	c.State = checkFail
+	c.Detail = "No publication has an output file recorded yet."
 	return c
 }
 
