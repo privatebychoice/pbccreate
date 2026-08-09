@@ -12,6 +12,31 @@ import (
 // ErrInvalidChannel is returned when a channel fails validation.
 var ErrInvalidChannel = errors.New("channel name is required")
 
+// ErrChannelNotFound is returned when a channel lookup finds no match.
+var ErrChannelNotFound = errors.New("channel not found")
+
+// ChannelByName returns the channel with the given name (case-insensitive), or
+// ErrChannelNotFound. Used by bulk import to map rows to existing channels.
+func ChannelByName(ctx context.Context, db *sql.DB, name string) (Channel, error) {
+	name = strings.TrimSpace(name)
+	var (
+		c            Channel
+		created, upd string
+	)
+	err := db.QueryRowContext(ctx,
+		`SELECT id, name, kind, created_at, updated_at FROM channels WHERE name = ? COLLATE NOCASE`, name).
+		Scan(&c.ID, &c.Name, &c.Kind, &created, &upd)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Channel{}, ErrChannelNotFound
+	}
+	if err != nil {
+		return Channel{}, fmt.Errorf("channel by name: %w", err)
+	}
+	c.CreatedAt = parseTS(created)
+	c.UpdatedAt = parseTS(upd)
+	return c, nil
+}
+
 // Channel is a brand/destination (e.g. a YouTube channel or blog). See
 // docs/SPEC.md §3.
 type Channel struct {

@@ -1,0 +1,48 @@
+{{define "content"}}
+<h1>Data <span class="muted">(backup &amp; import)</span></h1>
+
+{{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+
+<section aria-labelledby="backup-heading">
+  <h2 id="backup-heading">Backup</h2>
+  <p class="muted">Download a consistent, standalone copy of the whole database. It opens in any SQLite tool — your data, no lock-in.</p>
+  <p><a href="/data/backup"><button type="button">Download backup (.db)</button></a></p>
+</section>
+
+<section aria-labelledby="import-heading">
+  <h2 id="import-heading">Bulk import content items</h2>
+  <p class="muted">
+    Upload a CSV to backfill content items (e.g. already-published videos). Header row required.
+    Columns: <code>channel</code>, <code>title</code> (required); <code>type</code>, <code>mode</code>, <code>status</code> (optional).
+    The channel must already exist. Type defaults to <code>video</code>.
+  </p>
+  <p class="muted">
+    Valid types: {{range $i, $t := .Types}}{{if $i}}, {{end}}<code>{{$t}}</code>{{end}}.
+    Valid statuses: {{range $i, $s := .Statuses}}{{if $i}}, {{end}}<code>{{$s}}</code>{{end}}.
+  </p>
+
+  {{with .Result}}
+  <p class="notice" role="status">Imported {{.Added}} item(s); skipped {{len .Skipped}}.</p>
+  {{if .Skipped}}
+  <ul>
+    {{range .Skipped}}<li class="muted">{{.}}</li>{{end}}
+  </ul>
+  {{end}}
+  {{end}}
+
+  <form method="post" action="/data/import" enctype="multipart/form-data" class="stack">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <p>
+      <label for="import-file">CSV file <span class="muted">(up to 8 MB)</span></label>
+      <input id="import-file" name="file" type="file" accept=".csv,text/csv" required>
+    </p>
+    <p><button type="submit">Import CSV</button></p>
+  </form>
+
+  <h3>Example</h3>
+  <textarea class="rendered" readonly rows="4" aria-label="CSV example">channel,title,type,mode,status
+TUL,Best VPN 2026,video,single_cam,published
+TUL,Quick tip,short,,scheduled
+PBC,Why privacy matters,blog,,published</textarea>
+</section>
+{{end}}
