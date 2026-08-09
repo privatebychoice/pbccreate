@@ -129,6 +129,18 @@ th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var
 
 .muted { color: var(--muted); }
 
+/* Sponsor placements */
+.placement {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  margin-block-end: 0.75rem;
+}
+.checklist { list-style: none; padding: 0; margin: 0.5rem 0; }
+.checklist li { display: flex; align-items: center; gap: 0.4rem; margin-block-end: 0.25rem; }
+.checklist .done { text-decoration: line-through; color: var(--muted); }
+.checklist button, .placement .seg-head button { background: transparent; color: var(--accent); border: 1px solid var(--border); padding: 0.05rem 0.4rem; }
+
 textarea.rendered {
   width: 100%;
   max-width: 48rem;

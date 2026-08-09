@@ -338,6 +338,70 @@
   </form>
 </section>
 
+<section aria-labelledby="sponsor-heading">
+  <h2 id="sponsor-heading">Sponsors</h2>
+
+  {{if .Placements}}
+  {{range .Placements}}
+  <div class="placement">
+    <div class="seg-head">
+      <strong>{{.SponsorName}} — {{.CampaignName}}</strong>
+      <span class="muted">
+        {{if .Deadline}}due {{.Deadline}}{{end}}
+        <form method="post" action="/content/{{$.Item.ID}}/placements/{{.ID}}/delete" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <button type="submit">Detach</button>
+        </form>
+      </span>
+    </div>
+
+    <ul class="checklist">
+      {{range .Deliverables}}
+      <li>
+        <form method="post" action="/content/{{$.Item.ID}}/placements/{{.PlacementID}}/deliverables/{{.ID}}/toggle" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <button type="submit" aria-label="Toggle '{{.Description}}' done">{{if .Done}}☑{{else}}☐{{end}}</button>
+        </form>
+        <span{{if .Done}} class="done"{{end}}>{{.Description}}</span>
+        <form method="post" action="/content/{{$.Item.ID}}/placements/{{.PlacementID}}/deliverables/{{.ID}}/delete" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <button type="submit" aria-label="Delete '{{.Description}}'">✕</button>
+        </form>
+      </li>
+      {{end}}
+    </ul>
+
+    <form method="post" action="/content/{{$.Item.ID}}/placements/{{.ID}}/deliverables" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+      <input name="description" placeholder="New deliverable" required maxlength="300" autocomplete="off">
+      <button type="submit">Add deliverable</button>
+    </form>
+  </div>
+  {{end}}
+  {{else}}
+  <p>No sponsors attached.</p>
+  {{end}}
+
+  {{if .CampaignOptions}}
+  <form method="post" action="/content/{{.Item.ID}}/placements" class="stack">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <p>
+      <label for="campaign_id">Attach campaign</label>
+      <select id="campaign_id" name="campaign_id" required>
+        {{range .CampaignOptions}}<option value="{{.ID}}">{{.Label}}</option>{{end}}
+      </select>
+    </p>
+    <p>
+      <label for="placement-deadline">Deadline</label>
+      <input id="placement-deadline" name="deadline" type="date">
+    </p>
+    <p><button type="submit">Attach campaign</button></p>
+  </form>
+  {{else}}
+  <p class="muted">Create a <a href="/sponsors">sponsor campaign</a> first to attach it here.</p>
+  {{end}}
+</section>
+
 <section aria-labelledby="thumb-heading">
   <h2 id="thumb-heading">Thumbnails</h2>
   {{if .Thumbnails}}

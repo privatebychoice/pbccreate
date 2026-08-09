@@ -182,6 +182,29 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	placements, err := store.ListPlacementsForItem(r.Context(), s.db, item.ID)
+	if err != nil {
+		s.log.Error("list placements", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	placementViews := make([]placementView, 0, len(placements))
+	for _, p := range placements {
+		ds, err := store.ListDeliverables(r.Context(), s.db, p.ID)
+		if err != nil {
+			s.log.Error("list deliverables", "err", err, "placement", p.ID)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		placementViews = append(placementViews, placementView{Placement: p, Deliverables: ds})
+	}
+	campaignOptions, err := store.ListCampaignOptions(r.Context(), s.db)
+	if err != nil {
+		s.log.Error("list campaign options", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
 	data := map[string]any{
 		"Title":               item.Title,
 		"Build":               buildinfo.Build,
@@ -202,6 +225,8 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		"Description":         desc,
 		"DescriptionRendered": desc.Render(),
 		"Thumbnails":          thumbs,
+		"Placements":          placementViews,
+		"CampaignOptions":     campaignOptions,
 	}
 	if err := s.tmpl.render(w, http.StatusOK, "content_detail.html.tmpl", data); err != nil {
 		s.log.Error("render content detail", "err", err)
