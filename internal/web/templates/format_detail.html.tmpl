@@ -1,0 +1,92 @@
+{{define "content"}}
+<p><a href="/formats">← Back to formats</a></p>
+
+<h1>{{.Format.Name}}</h1>
+<p class="muted">{{.Format.ChannelName}} · {{humanize .Format.DefaultType}}{{if .Format.DefaultMode}} · {{humanize .Format.DefaultMode}}{{end}}</p>
+
+{{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+
+<form method="post" action="/formats/{{.Format.ID}}" class="stack">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <p>
+    <label for="name">Name</label>
+    <input id="name" name="name" required maxlength="200" value="{{.Format.Name}}" autocomplete="off">
+  </p>
+  <p>
+    <label for="description">Description</label>
+    <textarea id="description" name="description" rows="2" autocomplete="off">{{.Format.Description}}</textarea>
+  </p>
+  <p>
+    <label for="default_type">Default type</label>
+    <select id="default_type" name="default_type">
+      {{range .Types}}<option value="{{.}}"{{if eq . $.Format.DefaultType}} selected{{end}}>{{humanize .}}</option>{{end}}
+    </select>
+  </p>
+  <p>
+    <label for="default_mode">Default creator mode <span class="muted">(video / short)</span></label>
+    <select id="default_mode" name="default_mode">
+      <option value="">— none —</option>
+      {{range .Modes}}<option value="{{.}}"{{if eq . $.Format.DefaultMode}} selected{{end}}>{{humanize .}}</option>{{end}}
+    </select>
+  </p>
+  <p><button type="submit">Save format</button></p>
+</form>
+
+<section aria-labelledby="fmt-outline-heading">
+  <h2 id="fmt-outline-heading">Default outline</h2>
+  {{if .Segments}}
+  <ol class="outline">
+    {{range .Segments}}
+    <li>
+      <div class="seg-head">
+        <strong>{{.Title}}</strong>
+        <span class="muted">
+          {{if .TargetSeconds}}{{duration .TargetSeconds}}{{end}}
+          <form method="post" action="/formats/{{$.Format.ID}}/segments/{{.ID}}/move" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <input type="hidden" name="dir" value="up">
+            <button type="submit" aria-label="Move '{{.Title}}' up">↑</button>
+          </form>
+          <form method="post" action="/formats/{{$.Format.ID}}/segments/{{.ID}}/move" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <input type="hidden" name="dir" value="down">
+            <button type="submit" aria-label="Move '{{.Title}}' down">↓</button>
+          </form>
+          <form method="post" action="/formats/{{$.Format.ID}}/segments/{{.ID}}/delete" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" aria-label="Delete '{{.Title}}'">Delete</button>
+          </form>
+        </span>
+      </div>
+      {{if .Notes}}<p class="seg-notes muted">{{.Notes}}</p>{{end}}
+    </li>
+    {{end}}
+  </ol>
+  {{else}}
+  <p>No default outline yet.</p>
+  {{end}}
+
+  <form method="post" action="/formats/{{.Format.ID}}/segments" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <input name="title" placeholder="Segment title" required maxlength="200" autocomplete="off">
+    <input name="target_seconds" type="number" min="0" placeholder="secs" inputmode="numeric" aria-label="Target seconds">
+    <input name="notes" placeholder="Notes" maxlength="500" autocomplete="off">
+    <button type="submit">Add segment</button>
+  </form>
+</section>
+
+<section aria-labelledby="fmt-seed-heading">
+  <h2 id="fmt-seed-heading">Seed a content item</h2>
+  <p class="muted">Creates a {{humanize .Format.DefaultType}} in {{.Format.ChannelName}} with this outline pre-filled.</p>
+  <form method="post" action="/formats/{{.Format.ID}}/seed" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <input name="title" placeholder="New item title" required maxlength="300" autocomplete="off">
+    <button type="submit">Seed content item</button>
+  </form>
+</section>
+
+<form method="post" action="/formats/{{.Format.ID}}/delete" class="inline-form">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <button type="submit">Delete format</button>
+</form>
+{{end}}

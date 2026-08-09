@@ -15,9 +15,10 @@ var errOrderedNotFound = errors.New("ordered row not found")
 // column that scopes its ordering. Table and column names are interpolated into
 // SQL, so they must come only from this set — never user input.
 var orderedTables = map[string]string{
-	"outline_segments": "content_item_id",
-	"shots":            "content_item_id",
-	"series_items":     "series_id",
+	"outline_segments":        "content_item_id",
+	"shots":                   "content_item_id",
+	"series_items":            "series_id",
+	"format_outline_segments": "format_id",
 }
 
 // moveOrdered swaps a row's position with its neighbor in the given direction

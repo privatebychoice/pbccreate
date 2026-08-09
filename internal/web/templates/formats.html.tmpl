@@ -1,0 +1,63 @@
+{{define "content"}}
+<h1>Formats <span class="muted">(recurring templates)</span></h1>
+<p class="muted">Reusable templates (e.g. tutorial, review, essay) with a default type/mode and a default outline. Seeding a format creates a content item with the outline filled in.</p>
+
+{{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+
+{{if .HasChannels}}
+<form method="post" action="/formats" class="stack">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <p>
+    <label for="channel_id">Channel</label>
+    <select id="channel_id" name="channel_id" required>
+      {{range .Channels}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+    </select>
+  </p>
+  <p>
+    <label for="name">Name</label>
+    <input id="name" name="name" required maxlength="200" autocomplete="off">
+  </p>
+  <p>
+    <label for="description">Description</label>
+    <textarea id="description" name="description" rows="2" autocomplete="off"></textarea>
+  </p>
+  <p>
+    <label for="default_type">Default type</label>
+    <select id="default_type" name="default_type">
+      {{range .Types}}<option value="{{.}}">{{humanize .}}</option>{{end}}
+    </select>
+  </p>
+  <p>
+    <label for="default_mode">Default creator mode <span class="muted">(video / short)</span></label>
+    <select id="default_mode" name="default_mode">
+      <option value="">— none —</option>
+      {{range .Modes}}<option value="{{.}}">{{humanize .}}</option>{{end}}
+    </select>
+  </p>
+  <p><button type="submit">Add format</button></p>
+</form>
+{{else}}
+<p>Create a <a href="/channels">channel</a> first, then you can define formats.</p>
+{{end}}
+
+{{if .Formats}}
+<table>
+  <thead>
+    <tr><th scope="col">Format</th><th scope="col">Channel</th><th scope="col">Default</th><th scope="col">Outline</th></tr>
+  </thead>
+  <tbody>
+    {{range .Formats}}
+    <tr>
+      <td><a href="/formats/{{.ID}}">{{.Name}}</a>
+        {{if .Description}}<div class="muted">{{.Description}}</div>{{end}}</td>
+      <td>{{.ChannelName}}</td>
+      <td>{{humanize .DefaultType}}{{if .DefaultMode}} · {{humanize .DefaultMode}}{{end}}</td>
+      <td>{{.SegmentCount}} segment(s)</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{else}}
+<p>No formats yet. Define your first template above.</p>
+{{end}}
+{{end}}
