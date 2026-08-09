@@ -40,6 +40,8 @@ func main() {
 		err = runServe(log)
 	case "scaffold":
 		err = runScaffold(log, args)
+	case "script":
+		err = runScript(log, args)
 	case "help", "-h", "--help":
 		usage()
 	default:
@@ -230,6 +232,209 @@ func shotMeta(s store.Shot) string {
 	return strings.Join(parts, " · ")
 }
 
+// runScript drives a running DaVinci Resolve Studio instance via the Python
+// helper (docs/SPEC.md §8.2). It is optional and runtime-detected: if the
+// scripting prerequisites are absent it reports the reason and does not attempt
+// to script (the SQLite plan is untouched — Resolve is only a sink).
+//
+// Actions: ping (no item), create/import/timeline (require -item). Media bins and
+// the timeline are derived from the item's catalogued media (§5.7) and shot list
+// (§5.3).
+func runScript(log *slog.Logger, args []string) error {
+	fs := flag.NewFlagSet("script", flag.ContinueOnError)
+	itemID := fs.Int64("item", 0, "content item ID to script from (required for create/import/timeline)")
+	action := fs.String("action", "ping", "ping | create | import | timeline")
+	project := fs.String("project", "", "Resolve project name (default: derived from the item title)")
+	tlName := fs.String("timeline", "", "timeline name (default: project name)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+
+	integ := resolve.New(cfg.Python)
+	scripter, ok := integ.Scripter()
+	if !ok {
+		return errors.New(integ.Scripting().Reason)
+	}
+
+	ctx := context.Background()
+
+	if *action == "ping" {
+		resp, err := scripter.Ping(ctx)
+		return reportScript(log, resp, err)
+	}
+
+	if *itemID <= 0 {
+		return fmt.Errorf("action %q requires -item", *action)
+	}
+
+	dbPath := filepath.Join(cfg.DataDir, "pbccreate.db")
+	db, err := store.Open(ctx, dbPath, log)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = db.Close() }()
+	if _, err := store.Migrate(ctx, db, store.MigrationsFS(), log); err != nil {
+		return err
+	}
+
+	item, err := store.GetContentItem(ctx, db, *itemID)
+	if err != nil {
+		return err
+	}
+	projectName := *project
+	if projectName == "" {
+		projectName = item.Title
+	}
+
+	switch *action {
+	case "create":
+		resp, err := scripter.CreateProject(ctx, resolve.ProjectSpec{Name: projectName})
+		return reportScript(log, resp, err)
+	case "import":
+		assets, shots, err := loadMediaAndShots(ctx, db, item.ID)
+		if err != nil {
+			return err
+		}
+		bins := buildImportBins(assets, shots)
+		if len(bins) == 0 {
+			return errors.New("no catalogued media to import for this item")
+		}
+		log.Info("importing media to resolve", "item", item.ID, "bins", len(bins))
+		resp, err := scripter.ImportMedia(ctx, bins)
+		return reportScript(log, resp, err)
+	case "timeline":
+		assets, shots, err := loadMediaAndShots(ctx, db, item.ID)
+		if err != nil {
+			return err
+		}
+		name := *tlName
+		if name == "" {
+			name = projectName
+		}
+		tl := buildTimeline(name, item, shots, assets)
+		log.Info("building resolve timeline", "item", item.ID, "clips", len(tl.Clips), "multicam", tl.Multicam)
+		resp, err := scripter.BuildTimeline(ctx, tl)
+		return reportScript(log, resp, err)
+	default:
+		return fmt.Errorf("unknown -action %q (want ping|create|import|timeline)", *action)
+	}
+}
+
+// loadMediaAndShots fetches the item's catalogued media and shot list together.
+func loadMediaAndShots(ctx context.Context, db *sql.DB, itemID int64) ([]store.MediaAsset, []store.Shot, error) {
+	assets, err := store.ListMediaAssets(ctx, db, itemID)
+	if err != nil {
+		return nil, nil, err
+	}
+	shots, err := store.ListShots(ctx, db, itemID)
+	if err != nil {
+		return nil, nil, err
+	}
+	return assets, shots, nil
+}
+
+// reportScript renders a helper result: a transport error fails, a Resolve-side
+// failure (OK=false) fails with its reason, otherwise the message is printed.
+func reportScript(log *slog.Logger, resp resolve.Response, err error) error {
+	if err != nil {
+		return err
+	}
+	if !resp.OK {
+		return fmt.Errorf("resolve reported failure: %s (code %s)", resp.Error, resp.Code)
+	}
+	log.Info("resolve scripting ok", "message", resp.Message)
+	fmt.Println(resp.Message)
+	return nil
+}
+
+// buildImportBins maps catalogued media into media-pool bins: video clips go to
+// their shot's camera bin (or Footage when unlinked), audio to Audio, images to
+// Graphics, everything else to Assets. Bin order follows first appearance.
+func buildImportBins(assets []store.MediaAsset, shots []store.Shot) []resolve.Bin {
+	camByShot := map[int64]string{}
+	for _, s := range shots {
+		if c := strings.TrimSpace(s.Camera); c != "" {
+			camByShot[s.ID] = c
+		}
+	}
+
+	var order []string
+	clips := map[string][]string{}
+	add := func(bin, path string) {
+		if _, seen := clips[bin]; !seen {
+			order = append(order, bin)
+		}
+		clips[bin] = append(clips[bin], path)
+	}
+
+	for _, a := range assets {
+		path := strings.TrimSpace(a.Path)
+		if path == "" {
+			continue
+		}
+		switch a.Kind {
+		case "video":
+			if cam := camByShot[a.ShotID]; cam != "" {
+				add(cam, path)
+			} else {
+				add("Footage", path)
+			}
+		case "audio":
+			add("Audio", path)
+		case "image":
+			add("Graphics", path)
+		default:
+			add("Assets", path)
+		}
+	}
+
+	bins := make([]resolve.Bin, 0, len(order))
+	for _, name := range order {
+		bins = append(bins, resolve.Bin{Name: name, Clips: clips[name]})
+	}
+	return bins
+}
+
+// buildTimeline orders shot-linked video clips into a timeline. For multi_cam
+// items it flags Multicam and groups clip paths per camera to support downstream
+// multicam sync (SPEC §8.2).
+func buildTimeline(name string, item store.ContentItem, shots []store.Shot, assets []store.MediaAsset) resolve.Timeline {
+	byShot := map[int64][]string{}
+	for _, a := range assets {
+		if a.Kind == "video" && a.ShotID != 0 {
+			if p := strings.TrimSpace(a.Path); p != "" {
+				byShot[a.ShotID] = append(byShot[a.ShotID], p)
+			}
+		}
+	}
+
+	var clips []string
+	cameraBins := map[string][]string{}
+	for _, s := range shots { // shots are returned in position order
+		cam := strings.TrimSpace(s.Camera)
+		for _, p := range byShot[s.ID] {
+			clips = append(clips, p)
+			if cam != "" {
+				cameraBins[cam] = append(cameraBins[cam], p)
+			}
+		}
+	}
+
+	tl := resolve.Timeline{Name: name, Clips: clips}
+	if item.Mode == "multi_cam" {
+		tl.Multicam = true
+		if len(cameraBins) > 0 {
+			tl.CameraBins = cameraBins
+		}
+	}
+	return tl
+}
+
 func usage() {
 	fmt.Fprint(os.Stderr, `pbccreate — local content-planning tool for creators
 
@@ -239,6 +444,7 @@ Usage:
 Commands:
   serve      Start the local web UI (default)
   scaffold   Create DaVinci Resolve project folders
+  script     Drive DaVinci Resolve Studio (requires Studio + Python 3)
   version    Print version and build number
   help       Show this help
 `)

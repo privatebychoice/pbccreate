@@ -28,24 +28,31 @@ type Scaffolder interface {
 }
 
 // Integration is the ResolveIntegration boundary (SPEC §8): it bundles the
-// always-available Scaffolder with the runtime status of the optional Scripter.
+// always-available Scaffolder with the optional, runtime-detected Scripter.
 type Integration struct {
 	scaffolder Scaffolder
+	scripter   Scripter
 	scripting  ScriptingStatus
 }
 
 // New builds an Integration. The Scripter's prerequisites are probed once from
-// the process environment and the configured python executable; the concrete
-// Scripter (the Python bridge) arrives in a later slice.
+// the process environment and the configured python executable; the Scripter
+// itself is only offered to callers when those prerequisites are present.
 func New(python string) *Integration {
 	return &Integration{
 		scaffolder: FSScaffolder{},
+		scripter:   newPythonScripter(python),
 		scripting:  DetectScripting(os.Getenv, python, exec.LookPath),
 	}
 }
 
 // Scaffolder returns the always-available filesystem scaffolder.
 func (i *Integration) Scaffolder() Scaffolder { return i.scaffolder }
+
+// Scripter returns the Resolve scripter and whether its prerequisites are
+// present. When false, callers should fall back to the Scaffolder and surface
+// Scripting().Reason rather than attempting to script (SPEC §8.2).
+func (i *Integration) Scripter() (Scripter, bool) { return i.scripter, i.scripting.Available }
 
 // Scripting reports whether the Resolve scripting prerequisites are present.
 func (i *Integration) Scripting() ScriptingStatus { return i.scripting }
