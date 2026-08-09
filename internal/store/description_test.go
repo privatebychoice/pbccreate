@@ -61,10 +61,11 @@ func TestDescriptionRender(t *testing.T) {
 		Intro:      "  Hello  ",
 		Chapters:   "0:00 Intro",
 		Links:      "",
+		Sponsor:    "Sponsored by Acme.",
 		Disclosure: "Affiliate links below.",
 		Hashtags:   "#tag",
 	}
-	want := "Hello\n\n0:00 Intro\n\nAffiliate links below.\n\n#tag"
+	want := "Hello\n\n0:00 Intro\n\nSponsored by Acme.\n\nAffiliate links below.\n\n#tag"
 	if got := d.Render(); got != want {
 		t.Errorf("Render() =\n%q\nwant\n%q", got, want)
 	}

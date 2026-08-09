@@ -140,6 +140,17 @@ th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var
 .checklist li { display: flex; align-items: center; gap: 0.4rem; margin-block-end: 0.25rem; }
 .checklist .done { text-decoration: line-through; color: var(--muted); }
 .checklist button, .placement .seg-head button { background: transparent; color: var(--accent); border: 1px solid var(--border); padding: 0.05rem 0.4rem; }
+.badge-sponsor {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 3px;
+  padding: 0 0.35rem;
+  vertical-align: middle;
+}
 
 textarea.rendered {
   width: 100%;

@@ -42,7 +42,7 @@
       <h2>{{humanize .Status}} <span class="count">{{len .Items}}</span></h2>
       {{range .Items}}
       <article class="card">
-        <strong><a href="/content/{{.ID}}">{{.Title}}</a></strong>
+        <strong><a href="/content/{{.ID}}">{{.Title}}</a></strong>{{if .HasSponsor}} <span class="badge-sponsor">sponsored</span>{{end}}
         <div class="muted">{{.ChannelName}} · {{humanize .Type}}{{if .Mode}} · {{humanize .Mode}}{{end}}</div>
         <div class="card-actions">
           {{if .PrevStatus}}

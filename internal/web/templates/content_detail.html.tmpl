@@ -191,6 +191,10 @@
       <textarea id="d-links" name="links" rows="3" autocomplete="off">{{.Description.Links}}</textarea>
     </p>
     <p>
+      <label for="d-sponsor">Sponsor blurb</label>
+      <textarea id="d-sponsor" name="sponsor" rows="3" autocomplete="off">{{.Description.Sponsor}}</textarea>
+    </p>
+    <p>
       <label for="d-disclosure">Disclosure / affiliate</label>
       <textarea id="d-disclosure" name="disclosure" rows="2" autocomplete="off">{{.Description.Disclosure}}</textarea>
     </p>
@@ -205,6 +209,12 @@
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <button type="submit">Fill chapters from outline</button>
     <span class="muted">Overwrites the chapters block; save other edits first.</span>
+  </form>
+
+  <form method="post" action="/content/{{.Item.ID}}/description/sponsor" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <button type="submit">Fill sponsor blurb from placements</button>
+    <span class="muted">Overwrites the sponsor block; save other edits first.</span>
   </form>
 
   <h3>Preview</h3>

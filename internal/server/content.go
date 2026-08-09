@@ -13,11 +13,12 @@ import (
 )
 
 // boardItem decorates a content item with its adjacent statuses so the board can
-// render Back/Advance controls.
+// render Back/Advance controls, plus a sponsored flag for the badge.
 type boardItem struct {
 	store.ContentItem
 	PrevStatus string
 	NextStatus string
+	HasSponsor bool
 }
 
 // statusColumn is one pipeline column on the board.
@@ -62,6 +63,12 @@ func (s *Server) renderContent(w http.ResponseWriter, r *http.Request, status in
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+	sponsored, err := store.ContentItemIDsWithPlacements(r.Context(), s.db)
+	if err != nil {
+		s.log.Error("list sponsored item ids", "err", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
 
 	data := map[string]any{
 		"Title":       "Content",
@@ -70,7 +77,7 @@ func (s *Server) renderContent(w http.ResponseWriter, r *http.Request, status in
 		"Channels":    channels,
 		"Types":       store.ContentTypes,
 		"Modes":       store.CreatorModes,
-		"Columns":     groupByStatus(items),
+		"Columns":     groupByStatus(items, sponsored),
 		"HasChannels": len(channels) > 0,
 		"Error":       errMsg,
 	}
@@ -84,7 +91,7 @@ func (s *Server) renderContent(w http.ResponseWriter, r *http.Request, status in
 // attaching each item's previous/next status for the Back/Advance controls.
 // Items with an unrecognized status are dropped from the board (should not occur
 // given the schema CHECK, but keeps the view robust).
-func groupByStatus(items []store.ContentItem) []statusColumn {
+func groupByStatus(items []store.ContentItem, sponsored map[int64]bool) []statusColumn {
 	index := make(map[string]int, len(store.ContentStatuses))
 	for i, st := range store.ContentStatuses {
 		index[st] = i
@@ -96,7 +103,7 @@ func groupByStatus(items []store.ContentItem) []statusColumn {
 		if !ok {
 			continue
 		}
-		bi := boardItem{ContentItem: it}
+		bi := boardItem{ContentItem: it, HasSponsor: sponsored[it.ID]}
 		if i > 0 {
 			bi.PrevStatus = store.ContentStatuses[i-1]
 		}

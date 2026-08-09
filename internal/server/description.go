@@ -19,6 +19,7 @@ func (s *Server) handleDescriptionSave(w http.ResponseWriter, r *http.Request) {
 		Intro:         r.PostFormValue("intro"),
 		Chapters:      r.PostFormValue("chapters"),
 		Links:         r.PostFormValue("links"),
+		Sponsor:       r.PostFormValue("sponsor"),
 		Hashtags:      r.PostFormValue("hashtags"),
 		Disclosure:    r.PostFormValue("disclosure"),
 	}); err != nil {
@@ -57,6 +58,61 @@ func (s *Server) handleDescriptionChapters(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	s.redirectToItem(w, r, id)
+}
+
+// handleDescriptionSponsor regenerates the sponsor blurb from the item's
+// placements, preserving the other blocks.
+func (s *Server) handleDescriptionSponsor(w http.ResponseWriter, r *http.Request) {
+	id, ok := s.requireContentItem(w, r)
+	if !ok {
+		return
+	}
+	placements, err := store.ListPlacementsForItem(r.Context(), s.db, id)
+	if err != nil {
+		s.log.Error("list placements for blurb", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	desc, err := store.GetDescription(r.Context(), s.db, id)
+	if err != nil {
+		s.log.Error("get description", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	desc.Sponsor = generateSponsorBlurb(placements)
+	if _, err := store.SaveDescription(r.Context(), s.db, desc); err != nil {
+		s.log.Error("save description sponsor", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	s.redirectToItem(w, r, id)
+}
+
+// generateSponsorBlurb builds a description sponsor block from the item's
+// placements (campaign talking points, promo code, tracking link).
+func generateSponsorBlurb(placements []store.Placement) string {
+	parts := make([]string, 0, len(placements))
+	for _, p := range placements {
+		var b strings.Builder
+		fmt.Fprintf(&b, "Sponsored by %s.", p.SponsorName)
+		if tp := strings.TrimSpace(p.TalkingPoints); tp != "" {
+			b.WriteString("\n")
+			b.WriteString(tp)
+		}
+		promo := strings.TrimSpace(p.PromoCode)
+		link := strings.TrimSpace(p.TrackingLink)
+		switch {
+		case promo != "" && link != "":
+			fmt.Fprintf(&b, "\nUse code %s: %s", promo, link)
+		case promo != "":
+			fmt.Fprintf(&b, "\nUse code %s", promo)
+		case link != "":
+			b.WriteString("\n")
+			b.WriteString(link)
+		}
+		parts = append(parts, b.String())
+	}
+	return strings.Join(parts, "\n\n")
 }
 
 // generateChapters renders outline segments as YouTube-style chapter lines,

@@ -16,6 +16,7 @@ type Description struct {
 	Intro         string
 	Chapters      string
 	Links         string
+	Sponsor       string
 	Hashtags      string
 	Disclosure    string
 	CreatedAt     time.Time
@@ -25,7 +26,7 @@ type Description struct {
 // Render assembles the non-empty blocks, in publish order, separated by blank
 // lines — the text the operator copies into the upload.
 func (d Description) Render() string {
-	blocks := []string{d.Intro, d.Chapters, d.Links, d.Disclosure, d.Hashtags}
+	blocks := []string{d.Intro, d.Chapters, d.Links, d.Sponsor, d.Disclosure, d.Hashtags}
 	parts := make([]string, 0, len(blocks))
 	for _, b := range blocks {
 		if t := strings.TrimSpace(b); t != "" {
@@ -43,9 +44,9 @@ func GetDescription(ctx context.Context, db *sql.DB, contentItemID int64) (Descr
 		created, upd string
 	)
 	err := db.QueryRowContext(ctx,
-		`SELECT content_item_id, intro, chapters, links, hashtags, disclosure, created_at, updated_at
+		`SELECT content_item_id, intro, chapters, links, sponsor, hashtags, disclosure, created_at, updated_at
 		 FROM descriptions WHERE content_item_id = ?`, contentItemID).
-		Scan(&d.ContentItemID, &d.Intro, &d.Chapters, &d.Links, &d.Hashtags, &d.Disclosure, &created, &upd)
+		Scan(&d.ContentItemID, &d.Intro, &d.Chapters, &d.Links, &d.Sponsor, &d.Hashtags, &d.Disclosure, &created, &upd)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return Description{ContentItemID: contentItemID}, nil
@@ -61,16 +62,17 @@ func GetDescription(ctx context.Context, db *sql.DB, contentItemID int64) (Descr
 func SaveDescription(ctx context.Context, db *sql.DB, d Description) (Description, error) {
 	now := time.Now().UTC().Truncate(time.Second).Format(time.RFC3339)
 	_, err := db.ExecContext(ctx, `
-		INSERT INTO descriptions (content_item_id, intro, chapters, links, hashtags, disclosure, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO descriptions (content_item_id, intro, chapters, links, sponsor, hashtags, disclosure, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(content_item_id) DO UPDATE SET
 			intro = excluded.intro,
 			chapters = excluded.chapters,
 			links = excluded.links,
+			sponsor = excluded.sponsor,
 			hashtags = excluded.hashtags,
 			disclosure = excluded.disclosure,
 			updated_at = excluded.updated_at`,
-		d.ContentItemID, d.Intro, d.Chapters, d.Links, d.Hashtags, d.Disclosure, now, now)
+		d.ContentItemID, d.Intro, d.Chapters, d.Links, d.Sponsor, d.Hashtags, d.Disclosure, now, now)
 	if err != nil {
 		return Description{}, fmt.Errorf("save description: %w", err)
 	}

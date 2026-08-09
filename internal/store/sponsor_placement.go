@@ -26,6 +26,11 @@ type Placement struct {
 	Deadline      string
 	SponsorName   string
 	CampaignName  string
+	// Campaign fields (populated by ListPlacementsForItem) used for the
+	// description sponsor blurb.
+	TalkingPoints string
+	PromoCode     string
+	TrackingLink  string
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
@@ -107,7 +112,8 @@ func CreatePlacement(ctx context.Context, db *sql.DB, campaignID, contentItemID 
 // names, oldest first.
 func ListPlacementsForItem(ctx context.Context, db *sql.DB, contentItemID int64) ([]Placement, error) {
 	rows, err := db.QueryContext(ctx, `
-		SELECT p.id, p.campaign_id, p.content_item_id, p.deadline, s.name, c.name, p.created_at, p.updated_at
+		SELECT p.id, p.campaign_id, p.content_item_id, p.deadline, s.name, c.name,
+		       c.talking_points, c.promo_code, c.tracking_link, p.created_at, p.updated_at
 		FROM sponsor_placements p
 		JOIN sponsor_campaigns c ON c.id = p.campaign_id
 		JOIN sponsors s ON s.id = c.sponsor_id
@@ -124,7 +130,8 @@ func ListPlacementsForItem(ctx context.Context, db *sql.DB, contentItemID int64)
 			p            Placement
 			created, upd string
 		)
-		if err := rows.Scan(&p.ID, &p.CampaignID, &p.ContentItemID, &p.Deadline, &p.SponsorName, &p.CampaignName, &created, &upd); err != nil {
+		if err := rows.Scan(&p.ID, &p.CampaignID, &p.ContentItemID, &p.Deadline, &p.SponsorName, &p.CampaignName,
+			&p.TalkingPoints, &p.PromoCode, &p.TrackingLink, &created, &upd); err != nil {
 			return nil, fmt.Errorf("scan placement: %w", err)
 		}
 		p.CreatedAt = parseTS(created)
@@ -135,6 +142,29 @@ func ListPlacementsForItem(ctx context.Context, db *sql.DB, contentItemID int64)
 		return nil, fmt.Errorf("iterate placements: %w", err)
 	}
 	return out, nil
+}
+
+// ContentItemIDsWithPlacements returns the set of content item ids that have at
+// least one sponsor placement (for the board "sponsored" badge).
+func ContentItemIDsWithPlacements(ctx context.Context, db *sql.DB) (map[int64]bool, error) {
+	rows, err := db.QueryContext(ctx, `SELECT DISTINCT content_item_id FROM sponsor_placements`)
+	if err != nil {
+		return nil, fmt.Errorf("query placement item ids: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	set := make(map[int64]bool)
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan placement item id: %w", err)
+		}
+		set[id] = true
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate placement item ids: %w", err)
+	}
+	return set, nil
 }
 
 // GetPlacement returns one placement scoped to its content item.
