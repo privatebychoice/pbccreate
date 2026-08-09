@@ -238,6 +238,91 @@
   </form>
 </section>
 
+<section aria-labelledby="attr-heading">
+  <h2 id="attr-heading">Attributions <span class="muted">(licensing credits)</span></h2>
+
+  {{if .Attributions}}
+  <table>
+    <thead>
+      <tr><th>Asset</th><th>Kind</th><th>Provider</th><th>License</th><th>Credit</th><th>In credits</th><th></th></tr>
+    </thead>
+    <tbody>
+      {{range .Attributions}}
+      <tr>
+        <td>{{if .SourceURL}}<a href="{{.SourceURL}}" rel="noopener noreferrer nofollow" target="_blank">{{.Name}}</a>{{else}}{{.Name}}{{end}}
+          {{if .LicenseID}}<div class="muted path">ID: {{.LicenseID}}</div>{{end}}</td>
+        <td>{{humanize .Kind}}</td>
+        <td>{{if .Provider}}{{.Provider}}{{else}}<span class="muted">—</span>{{end}}</td>
+        <td>{{if .License}}{{.License}}{{else}}<span class="muted">—</span>{{end}}</td>
+        <td>{{if .CreditText}}{{.CreditText}}{{else}}<span class="muted">auto</span>{{end}}</td>
+        <td>
+          <form method="post" action="/content/{{$.Item.ID}}/attributions/{{.ID}}/toggle" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" aria-label="Toggle '{{.Name}}' in credits block">{{if .IncludedInDescription}}☑{{else}}☐{{end}}</button>
+          </form>
+        </td>
+        <td>
+          <form method="post" action="/content/{{$.Item.ID}}/attributions/{{.ID}}/delete" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" aria-label="Delete attribution '{{.Name}}'">✕</button>
+          </form>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p>No attributions yet. Record third-party music, footage, images, or fonts so required credits make it into the description.</p>
+  {{end}}
+
+  <form method="post" action="/content/{{.Item.ID}}/attributions" class="stack">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <p>
+      <label for="a-name">Asset name</label>
+      <input id="a-name" name="name" required maxlength="200" autocomplete="off">
+    </p>
+    <p>
+      <label for="a-kind">Kind</label>
+      <select id="a-kind" name="kind">
+        {{range .AttributionKinds}}<option value="{{.}}">{{humanize .}}</option>{{end}}
+      </select>
+    </p>
+    <p>
+      <label for="a-provider">Provider / source</label>
+      <input id="a-provider" name="provider" maxlength="200" autocomplete="off">
+    </p>
+    <p>
+      <label for="a-license">License</label>
+      <input id="a-license" name="license" maxlength="200" placeholder="e.g. CC-BY, royalty-free, licensed" autocomplete="off">
+    </p>
+    <p>
+      <label for="a-license-id">License / reference ID <span class="muted">(optional)</span></label>
+      <input id="a-license-id" name="license_id" maxlength="200" autocomplete="off">
+    </p>
+    <p>
+      <label for="a-source-url">Source URL <span class="muted">(optional)</span></label>
+      <input id="a-source-url" name="source_url" type="url" maxlength="500" autocomplete="off">
+    </p>
+    <p>
+      <label for="a-credit-text">Required credit text <span class="muted">(optional; overrides the auto line)</span></label>
+      <textarea id="a-credit-text" name="credit_text" rows="2" autocomplete="off"></textarea>
+    </p>
+    {{if .Media}}
+    <p>
+      <label for="a-media">Linked media asset <span class="muted">(optional)</span></label>
+      <select id="a-media" name="media_asset_id">
+        <option value="">— none —</option>
+        {{range .Media}}<option value="{{.ID}}">{{.Filename}}</option>{{end}}
+      </select>
+    </p>
+    {{end}}
+    <p>
+      <label><input type="checkbox" name="included" value="1" checked> Include in description credits block</label>
+    </p>
+    <p><button type="submit">Add attribution</button></p>
+  </form>
+</section>
+
 <section aria-labelledby="desc-heading">
   <h2 id="desc-heading">Description</h2>
 
@@ -258,6 +343,10 @@
     <p>
       <label for="d-sponsor">Sponsor blurb</label>
       <textarea id="d-sponsor" name="sponsor" rows="3" autocomplete="off">{{.Description.Sponsor}}</textarea>
+    </p>
+    <p>
+      <label for="d-credits">Credits</label>
+      <textarea id="d-credits" name="credits" rows="3" autocomplete="off">{{.Description.Credits}}</textarea>
     </p>
     <p>
       <label for="d-disclosure">Disclosure / affiliate</label>
@@ -286,6 +375,12 @@
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <button type="submit">Fill hashtags from tags</button>
     <span class="muted">Overwrites the hashtags block; save other edits first.</span>
+  </form>
+
+  <form method="post" action="/content/{{.Item.ID}}/description/credits" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <button type="submit">Fill credits from attributions</button>
+    <span class="muted">Overwrites the credits block; save other edits first.</span>
   </form>
 
   <h3>Preview</h3>

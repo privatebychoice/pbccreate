@@ -244,6 +244,13 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	attributions, err := store.ListAttributions(r.Context(), s.db, item.ID)
+	if err != nil {
+		s.log.Error("list attributions", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
 	thumbs, err := store.ListThumbnails(r.Context(), s.db, item.ID)
 	if err != nil {
 		s.log.Error("list thumbnails", "err", err, "id", id)
@@ -303,6 +310,8 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		"ItemLabels":          itemLabels,
 		"ChannelLabels":       channelLabels,
 		"LabelColors":         store.LabelColors,
+		"Attributions":        attributions,
+		"AttributionKinds":    store.AttributionKinds,
 	}
 	if err := s.tmpl.render(w, http.StatusOK, "content_detail.html.tmpl", data); err != nil {
 		s.log.Error("render content detail", "err", err)

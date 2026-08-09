@@ -21,6 +21,7 @@ func (s *Server) handleDescriptionSave(w http.ResponseWriter, r *http.Request) {
 		Chapters:      r.PostFormValue("chapters"),
 		Links:         r.PostFormValue("links"),
 		Sponsor:       r.PostFormValue("sponsor"),
+		Credits:       r.PostFormValue("credits"),
 		Hashtags:      r.PostFormValue("hashtags"),
 		Disclosure:    r.PostFormValue("disclosure"),
 	}); err != nil {
