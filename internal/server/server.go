@@ -44,6 +44,10 @@ func (s *Server) Handler() http.Handler { return s.handler }
 func (s *Server) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(web.StaticFS())))
+	// Serve the Go fonts (used by the canvas editor to match the render output);
+	// these patterns are more specific than "GET /static/" so they take priority.
+	mux.HandleFunc("GET /static/fonts/go-regular.ttf", s.handleFontRegular)
+	mux.HandleFunc("GET /static/fonts/go-bold.ttf", s.handleFontBold)
 	mux.HandleFunc("GET /version", s.handleVersion)
 	mux.HandleFunc("GET /{$}", s.handleHome)
 	mux.HandleFunc("GET /channels", s.handleChannelsList)

@@ -3,46 +3,52 @@
 
 <h1>Thumbnail: {{.Name}}</h1>
 
-<img class="thumb-preview" src="/content/{{.ContentItemID}}/thumbnails/{{.ThumbID}}/render.png"
-     alt="Thumbnail preview (1280×720)" width="640">
+<div class="thumb-editor">
+  <canvas id="thumb-canvas" width="1280" height="720"
+          data-canvas="{{.CanvasJSON}}"
+          role="img" aria-label="Thumbnail canvas, 1280 by 720 pixels"></canvas>
 
-<form method="post" action="/content/{{.ContentItemID}}/thumbnails/{{.ThumbID}}" class="stack">
-  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-  <p>
-    <label for="background">Background color</label>
-    <input id="background" name="background" type="color" value="{{.Background}}">
-  </p>
-  <fieldset>
-    <legend>Title text</legend>
-    <p>
-      <label for="text">Text <span class="muted">(blank = no title)</span></label>
-      <textarea id="text" name="text" rows="2" autocomplete="off">{{.Text}}</textarea>
-    </p>
-    <p>
-      <label for="color">Text color</label>
-      <input id="color" name="color" type="color" value="{{.Color}}">
-    </p>
-    <p>
-      <label for="font_size">Font size</label>
-      <input id="font_size" name="font_size" type="number" min="8" max="400" value="{{.FontSize}}">
-    </p>
-    <p>
-      <label for="pos_x">X</label>
-      <input id="pos_x" name="pos_x" type="number" min="0" max="1280" value="{{.X}}">
-      <label for="pos_y">Y</label>
-      <input id="pos_y" name="pos_y" type="number" min="0" max="720" value="{{.Y}}">
-    </p>
-    <p>
-      <label><input type="checkbox" name="bold" {{if .Bold}}checked{{end}}> Bold</label>
-    </p>
-  </fieldset>
-  <p><button type="submit">Save &amp; preview</button></p>
-</form>
+  <form method="post" action="/content/{{.ContentItemID}}/thumbnails/{{.ThumbID}}" class="thumb-panel">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <input type="hidden" id="canvas-json-field" name="canvas_json" value="{{.CanvasJSON}}">
 
-<form method="post" action="/content/{{.ContentItemID}}/thumbnails/{{.ThumbID}}/delete" class="inline-form">
-  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-  <button type="submit">Delete thumbnail</button>
-</form>
+    <p>
+      <label for="ctl-bg">Background</label>
+      <input id="ctl-bg" type="color">
+    </p>
+    <p><button type="button" id="ctl-add">Add text layer</button></p>
 
-<p class="muted">A drag-and-drop canvas editor with image layers, gradients, and safe-zone guides arrives in a later slice.</p>
+    <fieldset>
+      <legend>Selected text</legend>
+      <p>
+        <label for="ctl-text">Text</label>
+        <textarea id="ctl-text" rows="2" autocomplete="off"></textarea>
+      </p>
+      <p>
+        <label for="ctl-color">Color</label>
+        <input id="ctl-color" type="color">
+      </p>
+      <p>
+        <label for="ctl-size">Font size</label>
+        <input id="ctl-size" type="number" min="8" max="400">
+      </p>
+      <p><label><input id="ctl-bold" type="checkbox"> Bold</label></p>
+      <p><button type="button" id="ctl-del">Delete text layer</button></p>
+    </fieldset>
+
+    <p><label><input id="ctl-guides" type="checkbox"> Show safe-zone guides</label></p>
+
+    <p>
+      <button type="submit">Save</button>
+      <a href="/content/{{.ContentItemID}}/thumbnails/{{.ThumbID}}/render.png" target="_blank" rel="noopener">View exported PNG ↗</a>
+    </p>
+  </form>
+</div>
+
+<p class="muted">
+  Click a text layer to select it, then drag to reposition. The canvas is a live
+  preview; the exported PNG is rendered server-side and is authoritative. The
+  editor requires JavaScript. Image layers, gradients, and templates arrive in
+  later slices.
+</p>
 {{end}}

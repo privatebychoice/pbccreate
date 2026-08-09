@@ -1,5 +1,19 @@
 /* pbccreate base styles — self-hosted, no external resources. */
 
+/* Go fonts (also used by the server-side thumbnail renderer) for canvas fidelity. */
+@font-face {
+  font-family: "PBC Go";
+  src: url("/static/fonts/go-regular.ttf") format("truetype");
+  font-weight: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "PBC Go";
+  src: url("/static/fonts/go-bold.ttf") format("truetype");
+  font-weight: bold;
+  font-display: swap;
+}
+
 :root {
   --bg: #ffffff;
   --fg: #1a1a1a;
@@ -248,6 +262,23 @@ img.thumb-preview {
 }
 fieldset { border: 1px solid var(--border); border-radius: 6px; margin-block: 0.75rem; }
 legend { font-weight: 600; padding-inline: 0.35rem; }
+
+/* Thumbnail canvas editor */
+.thumb-editor { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-start; }
+#thumb-canvas {
+  width: 100%;
+  max-width: 720px;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #101418;
+  touch-action: none; /* let the canvas handle pointer drags */
+  cursor: move;
+}
+.thumb-panel { flex: 1 1 240px; min-width: 240px; }
+.thumb-panel fieldset p { margin: 0 0 0.6rem; }
+.thumb-panel textarea,
+.thumb-panel input[type="number"] { width: 100%; max-width: 20rem; }
 tr.missing { background: color-mix(in srgb, #c0392b 8%, transparent); }
 .badge-missing {
   display: inline-block;

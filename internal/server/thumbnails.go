@@ -5,12 +5,14 @@ import (
 	"image/png"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"go.privatebychoice.com/pbccreate/internal/buildinfo"
 	"go.privatebychoice.com/pbccreate/internal/store"
 	"go.privatebychoice.com/pbccreate/internal/thumbnail"
 )
+
+// maxCanvasJSON caps the accepted canvas payload size (defensive; local tool).
+const maxCanvasJSON = 256 * 1024
 
 // handleThumbnailCreate creates a thumbnail (with a starter canvas) and opens its
 // editor.
@@ -53,14 +55,6 @@ func (s *Server) handleThumbnailEdit(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	canvas, err := thumbnail.Parse(th.CanvasJSON)
-	if err != nil {
-		s.log.Error("parse canvas", "err", err, "thumb", thumbID)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-	title := firstTextLayer(canvas)
-
 	data := map[string]any{
 		"Title":         "Thumbnail: " + th.Name,
 		"Build":         buildinfo.Build,
@@ -68,13 +62,7 @@ func (s *Server) handleThumbnailEdit(w http.ResponseWriter, r *http.Request) {
 		"ContentItemID": id,
 		"ThumbID":       thumbID,
 		"Name":          th.Name,
-		"Background":    canvas.Background,
-		"Text":          title.Text,
-		"Color":         title.Color,
-		"FontSize":      title.FontSize,
-		"X":             title.X,
-		"Y":             title.Y,
-		"Bold":          title.Bold,
+		"CanvasJSON":    th.CanvasJSON,
 	}
 	if err := s.tmpl.render(w, http.StatusOK, "thumbnail_edit.html.tmpl", data); err != nil {
 		s.log.Error("render thumbnail edit", "err", err)
@@ -82,29 +70,25 @@ func (s *Server) handleThumbnailEdit(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleThumbnailSave writes the edited canvas (background + title layer).
+// handleThumbnailSave stores the canvas produced by the browser editor. The
+// payload is parsed into our model (dropping unknown fields) and re-encoded, so
+// only known, valid data is persisted.
 func (s *Server) handleThumbnailSave(w http.ResponseWriter, r *http.Request) {
 	id, thumbID, ok := s.requireContentItemAndSub(w, r, "thumbID")
 	if !ok {
 		return
 	}
 
-	canvas := thumbnail.Canvas{Background: orAuto(r.PostFormValue("background"), "#101418")}
-	if text := r.PostFormValue("text"); strings.TrimSpace(text) != "" {
-		size, _ := strconv.Atoi(r.PostFormValue("font_size"))
-		x, _ := strconv.Atoi(r.PostFormValue("pos_x"))
-		y, _ := strconv.Atoi(r.PostFormValue("pos_y"))
-		canvas.Layers = []thumbnail.Layer{{
-			Type:     "text",
-			Text:     text,
-			X:        x,
-			Y:        y,
-			FontSize: size,
-			Color:    orAuto(r.PostFormValue("color"), "#ffffff"),
-			Bold:     r.PostFormValue("bold") != "",
-		}}
+	raw := r.PostFormValue("canvas_json")
+	if len(raw) > maxCanvasJSON {
+		http.Error(w, "canvas too large", http.StatusRequestEntityTooLarge)
+		return
 	}
-
+	canvas, err := thumbnail.Parse(raw)
+	if err != nil {
+		http.Error(w, "invalid canvas", http.StatusBadRequest)
+		return
+	}
 	canvasJSON, err := canvas.JSON()
 	if err != nil {
 		s.log.Error("encode canvas", "err", err)
@@ -176,15 +160,4 @@ func (s *Server) handleThumbnailRender(w http.ResponseWriter, r *http.Request) {
 	if err := png.Encode(w, img); err != nil {
 		s.log.Error("encode png", "err", err, "thumb", thumbID)
 	}
-}
-
-// firstTextLayer returns the first text layer, or a sensible default when the
-// canvas has none (so the editor always shows title fields).
-func firstTextLayer(c thumbnail.Canvas) thumbnail.Layer {
-	for _, l := range c.Layers {
-		if l.Type == "text" {
-			return l
-		}
-	}
-	return thumbnail.Layer{Type: "text", FontSize: 100, Color: "#ffffff", X: 80, Y: 280}
 }

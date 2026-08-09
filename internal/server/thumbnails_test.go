@@ -40,15 +40,9 @@ func TestThumbnailCreateSaveRenderFlow(t *testing.T) {
 	}
 	thumbBase := base + "/thumbnails/" + strconv.FormatInt(th[0].ID, 10)
 
-	// Save a red background + title.
+	// Save a red background + title via the canvas_json payload (as the editor does).
 	saveRec := postForm(t, s, thumbBase, token, url.Values{
-		"background": {"#ff0000"},
-		"text":       {"BIG NEWS"},
-		"color":      {"#ffffff"},
-		"font_size":  {"120"},
-		"pos_x":      {"100"},
-		"pos_y":      {"300"},
-		"bold":       {"on"},
+		"canvas_json": {`{"background":"#ff0000","layers":[{"type":"text","text":"BIG NEWS","x":100,"y":300,"fontSize":120,"color":"#ffffff","bold":true}]}`},
 	})
 	if saveRec.Code != http.StatusSeeOther {
 		t.Fatalf("save = %d, want 303", saveRec.Code)
@@ -96,5 +90,39 @@ func TestThumbnailRenderNotFound(t *testing.T) {
 	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, url, nil))
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("render missing = %d, want 404", rec.Code)
+	}
+}
+
+func TestThumbnailSaveRejectsBadJSON(t *testing.T) {
+	s := newTestServerWithDB(t)
+	item := seedItem(t, s)
+	base := "/content/" + strconv.FormatInt(item.ID, 10)
+
+	getRec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(getRec, httptest.NewRequest(http.MethodGet, base, nil))
+	token := getCSRFCookie(getRec.Result().Cookies())
+	th, _ := store.CreateThumbnail(context.Background(), s.db, item.ID, "T", "{}")
+	thumbBase := base + "/thumbnails/" + strconv.FormatInt(th.ID, 10)
+
+	rec := postForm(t, s, thumbBase, token, url.Values{"canvas_json": {"{not valid json"}})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("bad canvas = %d, want 400", rec.Code)
+	}
+}
+
+func TestFontEndpoints(t *testing.T) {
+	s := newTestServerWithDB(t)
+	for _, path := range []string{"/static/fonts/go-regular.ttf", "/static/fonts/go-bold.ttf"} {
+		rec := httptest.NewRecorder()
+		s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		if rec.Code != http.StatusOK {
+			t.Errorf("%s = %d, want 200", path, rec.Code)
+		}
+		if ct := rec.Header().Get("Content-Type"); ct != "font/ttf" {
+			t.Errorf("%s content-type = %q, want font/ttf", path, ct)
+		}
+		if rec.Body.Len() == 0 {
+			t.Errorf("%s body empty", path)
+		}
 	}
 }
