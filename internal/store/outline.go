@@ -127,59 +127,11 @@ func DeleteOutlineSegment(ctx context.Context, db *sql.DB, id, contentItemID int
 }
 
 // MoveOutlineSegment swaps a segment's position with its neighbor in the given
-// direction ("up" or "down"). Moving past an edge is a no-op. All within one
-// transaction.
+// direction ("up" or "down"). Moving past an edge is a no-op.
 func MoveOutlineSegment(ctx context.Context, db *sql.DB, id, contentItemID int64, dir string) error {
-	if dir != "up" && dir != "down" {
-		return ErrInvalidMove
-	}
-
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin move tx: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	var pos int
-	err = tx.QueryRowContext(ctx,
-		`SELECT position FROM outline_segments WHERE id = ? AND content_item_id = ?`,
-		id, contentItemID).Scan(&pos)
-	switch {
-	case errors.Is(err, sql.ErrNoRows):
+	err := moveOrdered(ctx, db, "outline_segments", id, contentItemID, dir)
+	if errors.Is(err, errOrderedNotFound) {
 		return ErrOutlineSegmentNotFound
-	case err != nil:
-		return fmt.Errorf("load segment position: %w", err)
 	}
-
-	neighborQuery := `SELECT id, position FROM outline_segments
-		WHERE content_item_id = ? AND position > ? ORDER BY position ASC LIMIT 1`
-	if dir == "up" {
-		neighborQuery = `SELECT id, position FROM outline_segments
-			WHERE content_item_id = ? AND position < ? ORDER BY position DESC LIMIT 1`
-	}
-
-	var (
-		neighborID  int64
-		neighborPos int
-	)
-	err = tx.QueryRowContext(ctx, neighborQuery, contentItemID, pos).Scan(&neighborID, &neighborPos)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil // already at the edge; nothing to do
-	}
-	if err != nil {
-		return fmt.Errorf("load neighbor segment: %w", err)
-	}
-
-	if _, err := tx.ExecContext(ctx,
-		`UPDATE outline_segments SET position = ? WHERE id = ?`, neighborPos, id); err != nil {
-		return fmt.Errorf("move segment: %w", err)
-	}
-	if _, err := tx.ExecContext(ctx,
-		`UPDATE outline_segments SET position = ? WHERE id = ?`, pos, neighborID); err != nil {
-		return fmt.Errorf("move neighbor: %w", err)
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit move: %w", err)
-	}
-	return nil
+	return err
 }

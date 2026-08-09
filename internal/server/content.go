@@ -144,6 +144,13 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, total := buildOutline(segments)
 
+	shots, err := store.ListShots(r.Context(), s.db, item.ID)
+	if err != nil {
+		s.log.Error("list shots", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
 	data := map[string]any{
 		"Title":               item.Title,
 		"Build":               buildinfo.Build,
@@ -153,6 +160,8 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		"Script":              script,
 		"Segments":            rows,
 		"OutlineTotalSeconds": total,
+		"Shots":               shots,
+		"ShotStatuses":        store.ShotStatuses,
 	}
 	if err := s.tmpl.render(w, http.StatusOK, "content_detail.html.tmpl", data); err != nil {
 		s.log.Error("render content detail", "err", err)

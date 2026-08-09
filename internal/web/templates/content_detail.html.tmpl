@@ -91,5 +91,87 @@
   </form>
 </section>
 
-<p class="muted">Shot lists, thumbnails, and more attach here in later slices.</p>
+<section aria-labelledby="shots-heading">
+  <h2 id="shots-heading">Shot list</h2>
+
+  {{if .Shots}}
+  <ol class="shots">
+    {{range .Shots}}
+    <li>
+      <div class="seg-head">
+        <strong>{{.Description}}</strong>
+        <form method="post" action="/content/{{$.Item.ID}}/shots/{{.ID}}/status" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <label class="sr-only" for="shot-status-{{.ID}}">Status</label>
+          <select id="shot-status-{{.ID}}" name="status">
+            {{$cur := .Status}}
+            {{range $.ShotStatuses}}<option value="{{.}}"{{if eq . $cur}} selected{{end}}>{{humanize .}}</option>{{end}}
+          </select>
+          <button type="submit">Set</button>
+        </form>
+      </div>
+      {{if or .Scene .Framing .Camera}}
+      <div class="muted">
+        {{with .Scene}}scene: {{.}}{{end}}
+        {{with .Framing}} · framing: {{.}}{{end}}
+        {{with .Camera}} · camera: {{.}}{{end}}
+      </div>
+      {{end}}
+      {{if .Notes}}<p class="muted seg-notes">{{.Notes}}</p>{{end}}
+      <div class="card-actions">
+        <form method="post" action="/content/{{$.Item.ID}}/shots/{{.ID}}/move">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <input type="hidden" name="dir" value="up">
+          <button type="submit" aria-label="Move '{{.Description}}' up">↑</button>
+        </form>
+        <form method="post" action="/content/{{$.Item.ID}}/shots/{{.ID}}/move">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <input type="hidden" name="dir" value="down">
+          <button type="submit" aria-label="Move '{{.Description}}' down">↓</button>
+        </form>
+        <form method="post" action="/content/{{$.Item.ID}}/shots/{{.ID}}/delete">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <button type="submit" aria-label="Delete '{{.Description}}'">Delete</button>
+        </form>
+      </div>
+    </li>
+    {{end}}
+  </ol>
+  {{else}}
+  <p>No shots yet. Add the first one below.</p>
+  {{end}}
+
+  <form method="post" action="/content/{{.Item.ID}}/shots" class="stack">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <p>
+      <label for="shot-desc">Description</label>
+      <input id="shot-desc" name="description" required maxlength="300" autocomplete="off">
+    </p>
+    <p>
+      <label for="shot-scene">Scene / location</label>
+      <input id="shot-scene" name="scene" maxlength="120" autocomplete="off">
+    </p>
+    <p>
+      <label for="shot-framing">Framing / angle</label>
+      <input id="shot-framing" name="framing" maxlength="120" autocomplete="off">
+    </p>
+    <p>
+      <label for="shot-camera">Camera <span class="muted">(multi-cam)</span></label>
+      <input id="shot-camera" name="camera" maxlength="60" autocomplete="off">
+    </p>
+    <p>
+      <label for="shot-status">Status</label>
+      <select id="shot-status" name="status">
+        {{range .ShotStatuses}}<option value="{{.}}">{{humanize .}}</option>{{end}}
+      </select>
+    </p>
+    <p>
+      <label for="shot-notes">Notes</label>
+      <textarea id="shot-notes" name="notes" rows="2" autocomplete="off"></textarea>
+    </p>
+    <p><button type="submit">Add shot</button></p>
+  </form>
+</section>
+
+<p class="muted">Thumbnails, media, and more attach here in later slices.</p>
 {{end}}
