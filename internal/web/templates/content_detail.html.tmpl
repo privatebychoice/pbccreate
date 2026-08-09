@@ -188,6 +188,12 @@
         <button type="submit">Probe metadata</button>
       </form>
       {{end}}
+      {{if .ThumbAvailable}}
+      <form method="post" action="/content/{{.Item.ID}}/media/previews" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <button type="submit">Generate previews</button>
+      </form>
+      {{end}}
     </div>
     {{end}}
   </div>
@@ -205,6 +211,7 @@
       {{range .Media}}
       <tr{{if not .Present}} class="missing"{{end}}>
         <td>
+          {{if .PreviewPath}}<img class="thumb" src="/content/{{$.Item.ID}}/media/{{.ID}}/preview" alt="Preview of {{.Filename}}" loading="lazy" width="160">{{end}}
           {{.Filename}}
           {{if not .Present}}<span class="badge-missing" title="{{.Path}}">missing</span>{{end}}
           <div class="muted path">{{.Path}}</div>

@@ -174,6 +174,7 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		"MediaStatuses":       store.MediaStatuses,
 		"MediaKinds":          store.MediaKinds,
 		"ProbeAvailable":      media.ProbeAvailable(s.cfg.FFprobe),
+		"ThumbAvailable":      media.ThumbAvailable(s.cfg.FFmpeg),
 	}
 	if err := s.tmpl.render(w, http.StatusOK, "content_detail.html.tmpl", data); err != nil {
 		s.log.Error("render content detail", "err", err)

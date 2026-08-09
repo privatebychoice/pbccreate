@@ -50,6 +50,9 @@ type MediaAsset struct {
 	FPS             float64
 	Container       string
 
+	// PreviewPath is the cached ffmpeg preview-frame file, empty when none.
+	PreviewPath string
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -65,17 +68,63 @@ type MediaMetadata struct {
 	Container       string
 }
 
+// mediaColumns is the shared column list for media_asset reads, in scan order.
+const mediaColumns = `id, content_item_id, shot_id, path, filename, kind, size_bytes, mtime,
+	status, present, last_seen_at, notes,
+	duration_seconds, width, height, codec, fps, container, preview_path,
+	created_at, updated_at`
+
+// rowScanner is satisfied by both *sql.Row and *sql.Rows.
+type rowScanner interface {
+	Scan(dest ...any) error
+}
+
+// scanMediaAsset reads one media_asset row (columns in mediaColumns order).
+func scanMediaAsset(sc rowScanner) (MediaAsset, error) {
+	var (
+		a                    MediaAsset
+		shotID, size         sql.NullInt64
+		mtime, lastSeen      sql.NullString
+		present              int
+		duration, width, hgt sql.NullInt64
+		codec, container     sql.NullString
+		fps                  sql.NullFloat64
+		preview              sql.NullString
+		created, upd         string
+	)
+	if err := sc.Scan(&a.ID, &a.ContentItemID, &shotID, &a.Path, &a.Filename, &a.Kind,
+		&size, &mtime, &a.Status, &present, &lastSeen, &a.Notes,
+		&duration, &width, &hgt, &codec, &fps, &container, &preview,
+		&created, &upd); err != nil {
+		return MediaAsset{}, err
+	}
+	a.ShotID = shotID.Int64
+	a.SizeBytes = size.Int64
+	a.Present = present != 0
+	if mtime.Valid {
+		a.MTime = parseTS(mtime.String)
+	}
+	if lastSeen.Valid {
+		a.LastSeenAt = parseTS(lastSeen.String)
+	}
+	a.DurationSeconds = int(duration.Int64)
+	a.Width = int(width.Int64)
+	a.Height = int(hgt.Int64)
+	a.Codec = codec.String
+	a.FPS = fps.Float64
+	a.Container = container.String
+	a.PreviewPath = preview.String
+	a.CreatedAt = parseTS(created)
+	a.UpdatedAt = parseTS(upd)
+	return a, nil
+}
+
 // ListMediaAssets returns a content item's media assets, missing files first,
 // then by filename.
 func ListMediaAssets(ctx context.Context, db *sql.DB, contentItemID int64) ([]MediaAsset, error) {
-	rows, err := db.QueryContext(ctx, `
-		SELECT id, content_item_id, shot_id, path, filename, kind, size_bytes, mtime,
-		       status, present, last_seen_at, notes,
-		       duration_seconds, width, height, codec, fps, container,
-		       created_at, updated_at
-		FROM media_assets
-		WHERE content_item_id = ?
-		ORDER BY present ASC, filename COLLATE NOCASE`, contentItemID)
+	rows, err := db.QueryContext(ctx,
+		`SELECT `+mediaColumns+` FROM media_assets WHERE content_item_id = ? ORDER BY present ASC, filename COLLATE NOCASE`,
+		contentItemID)
 	if err != nil {
 		return nil, fmt.Errorf("query media assets: %w", err)
 	}
@@ -83,45 +132,31 @@ func ListMediaAssets(ctx context.Context, db *sql.DB, contentItemID int64) ([]Me
 
 	var out []MediaAsset
 	for rows.Next() {
-		var (
-			a                    MediaAsset
-			shotID, size         sql.NullInt64
-			mtime, lastSeen      sql.NullString
-			present              int
-			duration, width, hgt sql.NullInt64
-			codec, container     sql.NullString
-			fps                  sql.NullFloat64
-			created, upd         string
-		)
-		if err := rows.Scan(&a.ID, &a.ContentItemID, &shotID, &a.Path, &a.Filename, &a.Kind,
-			&size, &mtime, &a.Status, &present, &lastSeen, &a.Notes,
-			&duration, &width, &hgt, &codec, &fps, &container,
-			&created, &upd); err != nil {
+		a, err := scanMediaAsset(rows)
+		if err != nil {
 			return nil, fmt.Errorf("scan media asset: %w", err)
 		}
-		a.ShotID = shotID.Int64
-		a.SizeBytes = size.Int64
-		a.Present = present != 0
-		if mtime.Valid {
-			a.MTime = parseTS(mtime.String)
-		}
-		if lastSeen.Valid {
-			a.LastSeenAt = parseTS(lastSeen.String)
-		}
-		a.DurationSeconds = int(duration.Int64)
-		a.Width = int(width.Int64)
-		a.Height = int(hgt.Int64)
-		a.Codec = codec.String
-		a.FPS = fps.Float64
-		a.Container = container.String
-		a.CreatedAt = parseTS(created)
-		a.UpdatedAt = parseTS(upd)
 		out = append(out, a)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate media assets: %w", err)
 	}
 	return out, nil
+}
+
+// GetMediaAsset returns one asset scoped to its content item, or
+// ErrMediaNotFound.
+func GetMediaAsset(ctx context.Context, db *sql.DB, id, contentItemID int64) (MediaAsset, error) {
+	a, err := scanMediaAsset(db.QueryRowContext(ctx,
+		`SELECT `+mediaColumns+` FROM media_assets WHERE id = ? AND content_item_id = ?`,
+		id, contentItemID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return MediaAsset{}, ErrMediaNotFound
+	}
+	if err != nil {
+		return MediaAsset{}, fmt.Errorf("get media asset: %w", err)
+	}
+	return a, nil
 }
 
 // AddMediaAsset inserts a catalogued media asset. Path is required; filename
@@ -221,6 +256,18 @@ func UpdateMediaMetadata(ctx context.Context, db *sql.DB, id, contentItemID int6
 		nullableStr(m.Codec), nullableFloat(m.FPS), nullableStr(m.Container), ts, id, contentItemID)
 	if err != nil {
 		return fmt.Errorf("update media metadata: %w", err)
+	}
+	return checkAffected(res, ErrMediaNotFound)
+}
+
+// SetMediaPreview records the cached preview-frame path for an asset.
+func SetMediaPreview(ctx context.Context, db *sql.DB, id, contentItemID int64, previewPath string) error {
+	ts := time.Now().UTC().Truncate(time.Second).Format(time.RFC3339)
+	res, err := db.ExecContext(ctx,
+		`UPDATE media_assets SET preview_path = ?, updated_at = ? WHERE id = ? AND content_item_id = ?`,
+		nullableStr(previewPath), ts, id, contentItemID)
+	if err != nil {
+		return fmt.Errorf("set media preview: %w", err)
 	}
 	return checkAffected(res, ErrMediaNotFound)
 }
