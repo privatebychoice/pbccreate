@@ -1,0 +1,32 @@
+{{define "content"}}
+<h1>Search</h1>
+<p class="muted">Full-text search across scripts, ideas, descriptions, outlines, shots, retrospectives, music cues, the asset library, and content titles. Up to 50 matches per type.</p>
+
+<form method="get" action="/search" class="inline-form">
+  <label class="sr-only" for="q">Search</label>
+  <input id="q" name="q" value="{{.Query}}" placeholder="Search everything" autocomplete="off" autofocus>
+  <button type="submit">Search</button>
+</form>
+
+{{if .Query}}
+<p class="muted">{{.Count}} result(s) for “{{.Query}}”.</p>
+{{if .Results}}
+<table>
+  <thead>
+    <tr><th scope="col">Type</th><th scope="col">Where</th><th scope="col">Match</th></tr>
+  </thead>
+  <tbody>
+    {{range .Results}}
+    <tr>
+      <td>{{.Kind}}</td>
+      <td><a href="{{.URL}}">{{.Title}}</a></td>
+      <td class="muted">{{.Snippet}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{else}}
+<p>No matches.</p>
+{{end}}
+{{end}}
+{{end}}

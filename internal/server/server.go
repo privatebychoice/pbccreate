@@ -48,6 +48,7 @@ func (s *Server) routes() http.Handler {
 	// these patterns are more specific than "GET /static/" so they take priority.
 	mux.HandleFunc("GET /static/fonts/go-regular.ttf", s.handleFontRegular)
 	mux.HandleFunc("GET /static/fonts/go-bold.ttf", s.handleFontBold)
+	mux.HandleFunc("GET /search", s.handleSearch)
 	mux.HandleFunc("GET /version", s.handleVersion)
 	mux.HandleFunc("GET /{$}", s.handleHome)
 	mux.HandleFunc("GET /channels", s.handleChannelsList)
