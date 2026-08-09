@@ -41,8 +41,28 @@ type MediaAsset struct {
 	Present       bool
 	LastSeenAt    time.Time
 	Notes         string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+
+	// Technical metadata from ffprobe (0/"" when unknown; SPEC §5.7).
+	DurationSeconds int
+	Width           int
+	Height          int
+	Codec           string
+	FPS             float64
+	Container       string
+
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+// MediaMetadata carries the technical properties written by a probe. It mirrors
+// media.Metadata but keeps the store layer independent of the media package.
+type MediaMetadata struct {
+	DurationSeconds int
+	Width           int
+	Height          int
+	Codec           string
+	FPS             float64
+	Container       string
 }
 
 // ListMediaAssets returns a content item's media assets, missing files first,
@@ -50,7 +70,9 @@ type MediaAsset struct {
 func ListMediaAssets(ctx context.Context, db *sql.DB, contentItemID int64) ([]MediaAsset, error) {
 	rows, err := db.QueryContext(ctx, `
 		SELECT id, content_item_id, shot_id, path, filename, kind, size_bytes, mtime,
-		       status, present, last_seen_at, notes, created_at, updated_at
+		       status, present, last_seen_at, notes,
+		       duration_seconds, width, height, codec, fps, container,
+		       created_at, updated_at
 		FROM media_assets
 		WHERE content_item_id = ?
 		ORDER BY present ASC, filename COLLATE NOCASE`, contentItemID)
@@ -62,14 +84,19 @@ func ListMediaAssets(ctx context.Context, db *sql.DB, contentItemID int64) ([]Me
 	var out []MediaAsset
 	for rows.Next() {
 		var (
-			a               MediaAsset
-			shotID, size    sql.NullInt64
-			mtime, lastSeen sql.NullString
-			present         int
-			created, upd    string
+			a                    MediaAsset
+			shotID, size         sql.NullInt64
+			mtime, lastSeen      sql.NullString
+			present              int
+			duration, width, hgt sql.NullInt64
+			codec, container     sql.NullString
+			fps                  sql.NullFloat64
+			created, upd         string
 		)
 		if err := rows.Scan(&a.ID, &a.ContentItemID, &shotID, &a.Path, &a.Filename, &a.Kind,
-			&size, &mtime, &a.Status, &present, &lastSeen, &a.Notes, &created, &upd); err != nil {
+			&size, &mtime, &a.Status, &present, &lastSeen, &a.Notes,
+			&duration, &width, &hgt, &codec, &fps, &container,
+			&created, &upd); err != nil {
 			return nil, fmt.Errorf("scan media asset: %w", err)
 		}
 		a.ShotID = shotID.Int64
@@ -81,6 +108,12 @@ func ListMediaAssets(ctx context.Context, db *sql.DB, contentItemID int64) ([]Me
 		if lastSeen.Valid {
 			a.LastSeenAt = parseTS(lastSeen.String)
 		}
+		a.DurationSeconds = int(duration.Int64)
+		a.Width = int(width.Int64)
+		a.Height = int(hgt.Int64)
+		a.Codec = codec.String
+		a.FPS = fps.Float64
+		a.Container = container.String
 		a.CreatedAt = parseTS(created)
 		a.UpdatedAt = parseTS(upd)
 		out = append(out, a)
@@ -177,6 +210,21 @@ func SetMediaPresence(ctx context.Context, db *sql.DB, id, contentItemID int64, 
 	return checkAffected(res, ErrMediaNotFound)
 }
 
+// UpdateMediaMetadata writes technical properties (from a probe) for an asset.
+func UpdateMediaMetadata(ctx context.Context, db *sql.DB, id, contentItemID int64, m MediaMetadata) error {
+	ts := time.Now().UTC().Truncate(time.Second).Format(time.RFC3339)
+	res, err := db.ExecContext(ctx, `
+		UPDATE media_assets
+		SET duration_seconds = ?, width = ?, height = ?, codec = ?, fps = ?, container = ?, updated_at = ?
+		WHERE id = ? AND content_item_id = ?`,
+		nullableInt(int64(m.DurationSeconds)), nullableInt(int64(m.Width)), nullableInt(int64(m.Height)),
+		nullableStr(m.Codec), nullableFloat(m.FPS), nullableStr(m.Container), ts, id, contentItemID)
+	if err != nil {
+		return fmt.Errorf("update media metadata: %w", err)
+	}
+	return checkAffected(res, ErrMediaNotFound)
+}
+
 // DeleteMediaAsset removes a catalogued asset (does not touch the file on disk).
 func DeleteMediaAsset(ctx context.Context, db *sql.DB, id, contentItemID int64) error {
 	res, err := db.ExecContext(ctx,
@@ -206,6 +254,20 @@ func nullableInt(n int64) any {
 		return nil
 	}
 	return n
+}
+
+func nullableStr(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
+}
+
+func nullableFloat(f float64) any {
+	if f <= 0 {
+		return nil
+	}
+	return f
 }
 
 func nullableTime(t time.Time) any {

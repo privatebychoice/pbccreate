@@ -177,12 +177,24 @@
   <div class="seg-head">
     <h2 id="media-heading">Media</h2>
     {{if .Media}}
-    <form method="post" action="/content/{{.Item.ID}}/media/verify" class="inline-form">
-      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <button type="submit">Verify files</button>
-    </form>
+    <div class="card-actions">
+      <form method="post" action="/content/{{.Item.ID}}/media/verify" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <button type="submit">Verify files</button>
+      </form>
+      {{if .ProbeAvailable}}
+      <form method="post" action="/content/{{.Item.ID}}/media/probe" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <button type="submit">Probe metadata</button>
+      </form>
+      {{end}}
+    </div>
     {{end}}
   </div>
+
+  {{if and .Media (not .ProbeAvailable)}}
+  <p class="muted">Install ffmpeg (which provides ffprobe) to read media duration, resolution, and codec.</p>
+  {{end}}
 
   {{if .Media}}
   <table>
@@ -196,6 +208,15 @@
           {{.Filename}}
           {{if not .Present}}<span class="badge-missing" title="{{.Path}}">missing</span>{{end}}
           <div class="muted path">{{.Path}}</div>
+          {{if or .DurationSeconds .Width .Codec}}
+          <div class="muted meta-line">
+            {{if .DurationSeconds}}{{duration .DurationSeconds}}{{end}}
+            {{if .Width}} · {{.Width}}×{{.Height}}{{end}}
+            {{if .FPS}} · {{printf "%.2f" .FPS}} fps{{end}}
+            {{if .Codec}} · {{.Codec}}{{end}}
+            {{if .Container}} · {{.Container}}{{end}}
+          </div>
+          {{end}}
         </td>
         <td>{{humanize .Kind}}</td>
         <td>{{filesize .SizeBytes}}</td>

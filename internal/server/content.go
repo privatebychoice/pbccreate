@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"go.privatebychoice.com/pbccreate/internal/buildinfo"
+	"go.privatebychoice.com/pbccreate/internal/media"
 	"go.privatebychoice.com/pbccreate/internal/store"
 )
 
@@ -172,6 +173,7 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		"Media":               assets,
 		"MediaStatuses":       store.MediaStatuses,
 		"MediaKinds":          store.MediaKinds,
+		"ProbeAvailable":      media.ProbeAvailable(s.cfg.FFprobe),
 	}
 	if err := s.tmpl.render(w, http.StatusOK, "content_detail.html.tmpl", data); err != nil {
 		s.log.Error("render content detail", "err", err)
