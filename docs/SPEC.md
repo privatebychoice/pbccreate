@@ -117,6 +117,7 @@ Channel (brand, e.g. a YouTube channel / blog)
     ├── SponsorPlacement(s)  (deliverables from a campaign, tied to this item)
     ├── Tag(s)            (channel tag library; feeds YouTube tags + hashtags, §5.10)
     ├── Attribution(s)    (music/stock/font credits + licenses, §5.11)
+    ├── LicenseFile(s)    (uploaded legal docs/certificates on disk, §5.11)
     ├── Publication(s)    (per-platform: output file, video ID, URL, posted date, §5.12)
     ├── Retrospective     (what worked / improvement notes, §5.12)
     └── Task(s)           (production checklist)
@@ -308,6 +309,20 @@ requires — the difference between a clean upload and a takedown/claim.
   required credits actually make it into the upload.
 - Surfaced in the pre-publish checklist (§5.12): required attributions that are
   not yet included are flagged before the item can be marked published.
+- **License files (per project).** Some licenses ship as a document — a per-video
+  license certificate (PDF), a purchase receipt, or plain-text terms — that must
+  be *kept*, distinct from the credit text pasted into the description. Each
+  content item has a **`Licenses` folder** under the app data dir
+  (`<data_dir>/licenses/<content_item_id>/`) and an **upload** control that copies
+  any number of files into it. Per file we track: original filename, a
+  description, **what assets the license applies to**, an optional link to the
+  **external asset provider** (§5.20), size, and upload date. Uploads are
+  **stored opaquely and served download-only** (never rendered inline / executed;
+  see §9). This **complements, not replaces**, the description attributions above:
+  attributions are the credit text that ships in the upload; license files are the
+  legal record on disk. An optional `provider_id` link is also added to
+  attributions so a credit can name a registered provider while keeping its
+  free-text `provider` for one-offs.
 
 ### 5.12 Publication record, retrospective & pre-publish checklist
 - **Publication record — per platform** (a `ContentItem` may be posted to more
@@ -417,6 +432,28 @@ requires — the difference between a clean upload and a takedown/claim.
 - **Time tracking** *(Phase 2)* — optional per-item/per-stage timers to improve
   future estimates; feeds personal analytics.
 
+### 5.20 External asset providers & subscriptions
+Track the 3rd-party media services you subscribe to (e.g. music/SFX/stock/footage
+libraries) so licenses and attributions can point at a known provider instead of
+being retyped per video.
+
+- **Provider registry** *(v1)* — a **dedicated, operator-wide** (global, not
+  channel-scoped) section: one row per service. Fields: **name**, **service type**
+  (music / sfx / stock / images / fonts / other), **website URL**, **plan/tier**,
+  **billing cycle**, **renewal date**, **status** (active / lapsed), and **terms
+  notes**. A **portal/account URL only** may be stored — **never** logins,
+  passwords, API keys, or any credential (plan-only, no secrets; §9).
+- **Used as a selector** — the provider list drives the *external asset provider*
+  dropdown when uploading a per-project **license file** (§5.11) and the optional
+  provider link on an **attribution** (§5.11). Free-text entry remains available
+  for one-off providers with no subscription.
+- **Renewal awareness** *(v1)* — surface upcoming/lapsed renewals so a license
+  does not silently expire mid-project. No egress: this is local recall, not
+  billing integration.
+- Relationship to the cross-project **asset library** (§5.16): the asset library
+  catalogues the *assets you own/use*; this registry catalogues the *services and
+  their license terms* those assets came from.
+
 ---
 
 ## 6. UI stack
@@ -466,9 +503,13 @@ use integer PKs and `created_at`/`updated_at` timestamps.
 - `tasks` — content_item_id, description, status, position.
 - `tags` — channel_id, name (unique per channel). `content_item_tags` —
   content_item_id, tag_id (many-to-many, §5.10).
-- `attributions` — content_item_id, kind, name, provider, license, license_ref
-  (nullable), credit_text, url, media_asset_id (nullable), included_in_description
-  (bool) (§5.11).
+- `attributions` — content_item_id, kind, name, provider, provider_id (nullable
+  FK → asset_providers, §5.20), license, license_ref (nullable), credit_text, url,
+  media_asset_id (nullable), included_in_description (bool) (§5.11).
+- `license_files` — content_item_id, provider_id (nullable FK → asset_providers),
+  original_filename, stored_name, description, applies_to, size_bytes, uploaded_at.
+  Files live at `<data_dir>/licenses/<content_item_id>/`; served download-only
+  (§5.11, §9).
 - `publications` — content_item_id, platform, published_title, external_id (e.g.
   YouTube video ID), url, output_file (path or media_asset_id), posted_at,
   visibility, tags_snapshot (nullable), notes (§5.12).
@@ -498,6 +539,10 @@ Release/organization (§5.13–§5.19):
 - `takes` — shot_id, media_asset_id (nullable), rating/circle (bool), notes (§5.15).
 - `checklist_templates` — scope, stage, items. `checklist_runs` — content_item_id,
   template_id, per-item state (the pre-publish checklist is one run) (§5.15/§5.12).
+- `asset_providers` — name, service_type, website_url, plan_tier, billing_cycle,
+  renewal_on (nullable), status, terms_notes, portal_url (nullable; **no
+  credentials**). Operator-wide (not channel-scoped); drives the provider selector
+  for license files and attributions (§5.20).
 - `asset_library` — scope, kind, path, tags, license, attribution_ref
   (cross-project owned assets, §5.16).
 - `music_cues` — content_item_id, asset_ref, in_point, out_point, license (§5.16).
@@ -600,6 +645,14 @@ than failing.
   are validated against configured roots (no traversal). External tools are
   invoked via `os/exec` with **argument slices, never a shell string** — no shell
   injection; tool paths are validated.
+- **License-file uploads (§5.11).** Legal documents (PDF/PNG/JPG/WEBP/TXT) are
+  **not** parsed or decode-verified as images; they are stored **opaquely** under
+  `<data_dir>/licenses/<content_item_id>/` with an app-generated `stored_name`
+  (the original filename is metadata only — never used as a path), size-capped,
+  and extension-allowlisted. They are served **download-only**: `Content-Disposition:
+  attachment`, `X-Content-Type-Options: nosniff`, and a generic content type, so an
+  uploaded `.html`/`.svg` can never render or execute in the browser. No provider
+  credentials are ever stored (§5.20) — portal URLs only.
 - **Secrets:** none in v1 (plan-only, no OAuth/tokens). Financial fields, if
   used, stay local. Nothing sensitive is logged.
 - **Data at rest** lives in local SQLite + media files. The app does not encrypt;
