@@ -21,7 +21,7 @@
 </dl>
 
 {{if eq .Item.Type "blog"}}
-<section aria-labelledby="blog-heading">
+<section aria-labelledby="blog-heading" data-tab="release">
   <h2 id="blog-heading">Blog <span class="muted">(Markdown export)</span></h2>
   {{if .BlogSourceID}}<p class="muted">Derived from <a href="/content/{{.BlogSourceID}}">the source video</a>. The Script section below is the blog body — edit it independently.</p>{{end}}
   <div class="inline-form">
@@ -35,7 +35,7 @@
   </div>
 </section>
 {{else}}
-<section aria-labelledby="repurpose-heading">
+<section aria-labelledby="repurpose-heading" data-tab="release">
   <h2 id="repurpose-heading">Repurpose</h2>
   {{if .DerivedBlogID}}
   <p>A blog draft was derived from this item: <a href="/content/{{.DerivedBlogID}}">open the blog →</a></p>
@@ -49,7 +49,7 @@
 </section>
 {{end}}
 
-<section aria-labelledby="checklist-heading">
+<section aria-labelledby="checklist-heading" data-tab="release">
   <h2 id="checklist-heading">Pre-publish checklist
     {{if .ChecklistReady}}<span class="badge-ready">Ready</span>{{else}}<span class="badge-blocked">Not ready</span>{{end}}
   </h2>
@@ -65,7 +65,7 @@
   <p class="muted">Marking the item published with an override reason is planned; for now use the Status control above.</p>
 </section>
 
-<section aria-labelledby="runs-heading">
+<section aria-labelledby="runs-heading" data-tab="release">
   <h2 id="runs-heading">Stage checklists <span class="muted">(SOP runs)</span></h2>
 
   {{range .ChecklistRuns}}
@@ -109,7 +109,7 @@
   {{end}}
 </section>
 
-<section aria-labelledby="titles-heading">
+<section aria-labelledby="titles-heading" data-tab="plan">
   <h2 id="titles-heading">Titles <span class="muted">(working / A-B)</span></h2>
 
   {{if .TitleCandidates}}
@@ -167,7 +167,7 @@
   </form>
 </section>
 
-<section aria-labelledby="script-heading">
+<section aria-labelledby="script-heading" data-tab="plan">
   <h2 id="script-heading">Script</h2>
   <p class="muted">{{.Script.WordCount}} words · ~{{.Script.DurationLabel}} at {{.Script.WPM}} wpm</p>
   <form method="post" action="/content/{{.Item.ID}}/script" class="stack">
@@ -184,7 +184,7 @@
   </form>
 </section>
 
-<section aria-labelledby="outline-heading">
+<section aria-labelledby="outline-heading" data-tab="plan">
   <h2 id="outline-heading">Outline / Layout</h2>
   <p class="muted">Total target: {{duration .OutlineTotalSeconds}}</p>
 
@@ -257,7 +257,7 @@
   </form>
 </section>
 
-<section aria-labelledby="shots-heading">
+<section aria-labelledby="shots-heading" data-tab="plan">
   <h2 id="shots-heading">Shot list</h2>
 
   {{if .Shots}}
@@ -424,7 +424,7 @@
   </form>
 </section>
 
-<section aria-labelledby="gear-heading">
+<section aria-labelledby="gear-heading" data-tab="media">
   <h2 id="gear-heading">Gear <span class="muted">(setup used)</span></h2>
   {{if .ItemGear}}
   <ul class="chips">
@@ -452,7 +452,7 @@
   </form>
 </section>
 
-<section aria-labelledby="location-heading">
+<section aria-labelledby="location-heading" data-tab="media">
   <h2 id="location-heading">Location <span class="muted">(set)</span></h2>
   {{if .ItemLocations}}
   <ul class="chips">
@@ -480,7 +480,7 @@
   </form>
 </section>
 
-<section aria-labelledby="labels-heading">
+<section aria-labelledby="labels-heading" data-tab="metadata">
   <h2 id="labels-heading">Labels <span class="muted">(internal)</span></h2>
 
   {{if .ItemLabels}}
@@ -513,7 +513,7 @@
   </form>
 </section>
 
-<section aria-labelledby="pillars-heading">
+<section aria-labelledby="pillars-heading" data-tab="metadata">
   <h2 id="pillars-heading">Pillars <span class="muted">(content themes)</span></h2>
 
   {{if .ItemPillars}}
@@ -543,7 +543,7 @@
   <p class="muted">Define pillars and see coverage balance on the <a href="/pillars">Pillars</a> page.</p>
 </section>
 
-<section aria-labelledby="tags-heading">
+<section aria-labelledby="tags-heading" data-tab="metadata">
   <h2 id="tags-heading">Tags <span class="muted">(SEO keywords)</span></h2>
 
   {{if .ItemTags}}
@@ -575,7 +575,7 @@
   </form>
 </section>
 
-<section aria-labelledby="attr-heading">
+<section aria-labelledby="attr-heading" data-tab="rights">
   <h2 id="attr-heading">Attributions <span class="muted">(licensing credits)</span></h2>
 
   {{if .Attributions}}
@@ -669,7 +669,7 @@
   </form>
 </section>
 
-<section aria-labelledby="cues-heading">
+<section aria-labelledby="cues-heading" data-tab="rights">
   <h2 id="cues-heading">Music cues <span class="muted">(cue sheet)</span></h2>
   <p class="muted">Track list with in/out points and license — useful for Content ID. Turn a cue into a music attribution so its credit reaches the description.</p>
 
@@ -757,7 +757,7 @@
   </form>
 </section>
 
-<section aria-labelledby="lic-heading">
+<section aria-labelledby="lic-heading" data-tab="rights">
   <h2 id="lic-heading">License files <span class="muted">(legal documents on disk)</span></h2>
   <p class="muted">Keep license certificates, receipts, or terms for this project. Files are stored locally and downloaded, never opened in the browser. This is separate from the credit text above.</p>
 
@@ -816,7 +816,7 @@
   </form>
 </section>
 
-<section aria-labelledby="desc-heading">
+<section aria-labelledby="desc-heading" data-tab="metadata">
   <h2 id="desc-heading">Description</h2>
 
   <form method="post" action="/content/{{.Item.ID}}/description" class="stack">
@@ -881,7 +881,7 @@
   <p><button type="button" data-copy="desc-rendered">Copy description</button></p>
 </section>
 
-<section aria-labelledby="media-heading">
+<section aria-labelledby="media-heading" data-tab="media">
   <div class="seg-head">
     <h2 id="media-heading">Media</h2>
     {{if .Media}}
@@ -1007,7 +1007,7 @@
   </form>
 </section>
 
-<section aria-labelledby="sponsor-heading">
+<section aria-labelledby="sponsor-heading" data-tab="rights">
   <h2 id="sponsor-heading">Sponsors</h2>
 
   {{if .Placements}}
@@ -1071,7 +1071,7 @@
   {{end}}
 </section>
 
-<section aria-labelledby="thumb-heading">
+<section aria-labelledby="thumb-heading" data-tab="metadata">
   <h2 id="thumb-heading">Thumbnails</h2>
   {{if .Thumbnails}}
   <div class="thumb-grid">
@@ -1093,7 +1093,7 @@
   </form>
 </section>
 
-<section aria-labelledby="pub-heading">
+<section aria-labelledby="pub-heading" data-tab="release">
   <h2 id="pub-heading">Publications <span class="muted">(per platform)</span></h2>
   <p class="muted">Record where this item was posted. Metrics are entered by hand — pbccreate makes no network calls.</p>
 
@@ -1188,7 +1188,7 @@
   </form>
 </section>
 
-<section aria-labelledby="retro-heading">
+<section aria-labelledby="retro-heading" data-tab="release">
   <h2 id="retro-heading">Retrospective <span class="muted">(what worked / to improve)</span></h2>
   <p class="muted">Reflect after publishing. Performance notes are entered by hand — pbccreate makes no network calls, so it pulls no analytics.</p>
 

@@ -194,6 +194,34 @@ details.takes summary { cursor: pointer; color: var(--accent); font-size: 0.9rem
 details.edit { margin-block: 0.5rem; }
 details.edit summary { cursor: pointer; color: var(--accent); font-size: 0.9rem; }
 
+/* Content editor tabs (built by app.js from [data-tab] sections) */
+.tabbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--border);
+  margin-block: 1rem 1.5rem;
+}
+.tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px; /* sit the active underline on the bar's border */
+  padding: 0.5rem 0.9rem;
+  font: inherit;
+  color: var(--muted);
+  cursor: pointer;
+}
+.tab:hover { color: var(--accent); }
+.tab[aria-selected="true"] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tabpanel:focus { outline: none; }
+.tabpanel > section:first-child { margin-top: 0; }
+
 /* Pre-publish checklist (SPEC 5.12) */
 ul.prepublish { list-style: none; padding: 0; margin: 0.5rem 0; }
 ul.prepublish li { display: flex; align-items: baseline; gap: 0.5rem; margin-block-end: 0.35rem; }

@@ -45,6 +45,23 @@ func TestContentDetailView(t *testing.T) {
 	}
 }
 
+// TestContentDetailTabTagging guards the data-tab attributes app.js relies on to
+// build the tabbed editor. If the template loses them the tabs silently break.
+func TestContentDetailTabTagging(t *testing.T) {
+	s := newTestServerWithDB(t)
+	item := seedItem(t, s)
+
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/content/"+strconv.FormatInt(item.ID, 10), nil))
+	body := rec.Body.String()
+
+	for _, tab := range []string{"plan", "media", "metadata", "rights", "release"} {
+		if !strings.Contains(body, `data-tab="`+tab+`"`) {
+			t.Errorf("rendered detail missing sections tagged data-tab=%q", tab)
+		}
+	}
+}
+
 func TestContentDetailNotFound(t *testing.T) {
 	s := newTestServerWithDB(t)
 	rec := httptest.NewRecorder()
