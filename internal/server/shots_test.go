@@ -116,6 +116,35 @@ func TestShotEditBeatLinkAndLabel(t *testing.T) {
 	}
 }
 
+func TestOutlineListsLinkedShots(t *testing.T) {
+	s := newTestServerWithDB(t)
+	ctx := context.Background()
+	item := seedItem(t, s)
+	base := "/content/" + strconv.FormatInt(item.ID, 10)
+
+	beat, _ := store.AddOutlineSegment(ctx, s.db, item.ID, "The Hook", "", 15)
+	sh1, _ := store.AddShot(ctx, s.db, item.ID, store.Shot{Description: "phone screen", OutlineSegmentID: beat.ID})
+	_, _ = store.AddShot(ctx, s.db, item.ID, store.Shot{Description: "card tap", OutlineSegmentID: beat.ID})
+	// An unlinked shot must not appear under any beat.
+	_, _ = store.AddShot(ctx, s.db, item.ID, store.Shot{Description: "loose clip"})
+
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, base, nil))
+	body := rec.Body.String()
+
+	// The outline beat shows jump-links to its shots...
+	if !strings.Contains(body, `href="#shot-`+strconv.FormatInt(sh1.ID, 10)+`"`) {
+		t.Error("outline missing jump-link to linked shot")
+	}
+	if !strings.Contains(body, "Jump to shot 1A") {
+		t.Error("outline missing labelled jump-link 1A")
+	}
+	// ...and each shot has the matching anchor id target.
+	if !strings.Contains(body, `id="shot-`+strconv.FormatInt(sh1.ID, 10)+`"`) {
+		t.Error("shot list missing anchor id for jump target")
+	}
+}
+
 func TestOutlineSegmentEdit(t *testing.T) {
 	s := newTestServerWithDB(t)
 	ctx := context.Background()

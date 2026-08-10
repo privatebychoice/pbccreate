@@ -222,6 +222,18 @@ details.edit summary { cursor: pointer; color: var(--accent); font-size: 0.9rem;
 .tabpanel:focus { outline: none; }
 .tabpanel > section:first-child { margin-top: 0; }
 
+/* Beat -> shot jump links in the outline, and their scroll target */
+.beat-shots { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: baseline; }
+.beat-shots a {
+  display: inline-block;
+  padding: 0 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  text-decoration: none;
+}
+.shots > li { scroll-margin-top: 1rem; }
+.shots > li:target { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+
 /* Pre-publish checklist (SPEC 5.12) */
 ul.prepublish { list-style: none; padding: 0; margin: 0.5rem 0; }
 ul.prepublish li { display: flex; align-items: baseline; gap: 0.5rem; margin-block-end: 0.35rem; }

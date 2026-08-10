@@ -248,14 +248,18 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		beatOptions = append(beatOptions, beatOption{ID: seg.ID, Label: fmt.Sprintf("Beat %d — %s", n, seg.Title)})
 	}
 	// Labels: shots linked to a beat get "<beat><letter>" (e.g. 2A), the letter
-	// following their order within that beat.
+	// following their order within that beat. shotsByBeat lets the outline show a
+	// jump-list of each beat's shots.
 	letterByBeat := make(map[int64]int)
+	shotsByBeat := make(map[int64][]shotRef)
 	shotViews := make([]shotView, 0, len(shots))
 	for _, sh := range shots {
 		sv := shotView{Shot: sh, Takes: takesByShot[sh.ID]}
 		if n, ok := beatNum[sh.OutlineSegmentID]; ok {
 			sv.Label = fmt.Sprintf("%d%s", n, shotLetter(letterByBeat[sh.OutlineSegmentID]))
 			letterByBeat[sh.OutlineSegmentID]++
+			shotsByBeat[sh.OutlineSegmentID] = append(shotsByBeat[sh.OutlineSegmentID],
+				shotRef{ID: sh.ID, Label: sv.Label, Description: sh.Description})
 		}
 		shotViews = append(shotViews, sv)
 	}
@@ -451,6 +455,7 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		"Shots":               shotViews,
 		"ShotStatuses":        store.ShotStatuses,
 		"BeatOptions":         beatOptions,
+		"ShotsByBeat":         shotsByBeat,
 		"Media":               assets,
 		"MediaStatuses":       store.MediaStatuses,
 		"MediaKinds":          store.MediaKinds,
@@ -541,6 +546,14 @@ type outlineRow struct {
 type beatOption struct {
 	ID    int64
 	Label string
+}
+
+// shotRef is a compact reference to a shot, used to list a beat's shots in the
+// outline as jump-links back to the shot list.
+type shotRef struct {
+	ID          int64
+	Label       string
+	Description string
 }
 
 // shotLetter maps a zero-based index to a shot letter within a beat (0→A, 25→Z),

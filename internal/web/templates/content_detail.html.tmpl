@@ -197,6 +197,12 @@
         <span class="muted">start ~{{duration .StartSeconds}} · target {{if .TargetSeconds}}{{duration .TargetSeconds}}{{else}}—{{end}}</span>
       </div>
       {{if .Notes}}<p class="muted seg-notes">{{.Notes}}</p>{{end}}
+      {{$beatShots := index $.ShotsByBeat .ID}}
+      {{if $beatShots}}
+      <p class="beat-shots muted">Shots:
+        {{range $beatShots}}<a href="#shot-{{.ID}}" aria-label="Jump to shot {{.Label}}: {{.Description}}" title="{{.Description}}">{{.Label}}</a>{{end}}
+      </p>
+      {{end}}
       <details class="edit">
         <summary>Edit</summary>
         <form method="post" action="/content/{{$.Item.ID}}/outline/{{.ID}}/update" class="stack">
@@ -263,7 +269,7 @@
   {{if .Shots}}
   <ol class="shots">
     {{range .Shots}}
-    <li>
+    <li id="shot-{{.ID}}">
       <div class="seg-head">
         <strong>{{if .Label}}{{.Label}} · {{end}}{{.Description}}</strong>
         <form method="post" action="/content/{{$.Item.ID}}/shots/{{.ID}}/status" class="inline-form">
