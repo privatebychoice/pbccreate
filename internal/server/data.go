@@ -29,19 +29,51 @@ func (s *Server) handleDataPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) renderData(w http.ResponseWriter, r *http.Request, status int, errMsg string, result *importResult) {
+	stored, err := store.GetSetting(r.Context(), s.db, store.SettingProjectRoot)
+	if err != nil {
+		s.log.Error("get project root setting", "err", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	effective, source, err := store.ResolveProjectRoot(r.Context(), s.db, s.cfg.ProjectRoot)
+	if err != nil {
+		s.log.Error("resolve project root", "err", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	notice := ""
+	if r.URL.Query().Get("saved") == "project-root" {
+		notice = "Project root saved."
+	}
 	data := map[string]any{
-		"Title":     "Data",
-		"Build":     buildinfo.Build,
-		"CSRFToken": csrfToken(r),
-		"Types":     store.ContentTypes,
-		"Statuses":  store.ContentStatuses,
-		"Result":    result,
-		"Error":     errMsg,
+		"Title":                "Data",
+		"Build":                buildinfo.Build,
+		"CSRFToken":            csrfToken(r),
+		"Types":                store.ContentTypes,
+		"Statuses":             store.ContentStatuses,
+		"Result":               result,
+		"Error":                errMsg,
+		"Notice":               notice,
+		"ProjectRootStored":    stored,
+		"ProjectRootEnv":       strings.TrimSpace(s.cfg.ProjectRoot),
+		"ProjectRootEffective": effective,
+		"ProjectRootSource":    source,
 	}
 	if err := s.tmpl.render(w, status, "data.html.tmpl", data); err != nil {
 		s.log.Error("render data", "err", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	}
+}
+
+// handleProjectRootSave stores the DaVinci project root (used when
+// PBCCREATE_PROJECT_ROOT is not set in the environment).
+func (s *Server) handleProjectRootSave(w http.ResponseWriter, r *http.Request) {
+	if err := store.SetSetting(r.Context(), s.db, store.SettingProjectRoot, r.PostFormValue("project_root")); err != nil {
+		s.log.Error("save project root", "err", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/data?saved=project-root", http.StatusSeeOther)
 }
 
 // handleBackupDownload streams a consistent standalone copy of the database.

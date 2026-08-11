@@ -6,11 +6,50 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
 	"go.privatebychoice.com/pbccreate/internal/store"
 )
+
+func TestProjectRootSettingAndHomeNudge(t *testing.T) {
+	s := newTestServerWithDB(t)
+
+	// Unset: the Data page shows "not set" and the home page shows the nudge.
+	dataRec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(dataRec, httptest.NewRequest(http.MethodGet, "/data", nil))
+	if !strings.Contains(dataRec.Body.String(), "DaVinci project root") || !strings.Contains(dataRec.Body.String(), "not set") {
+		t.Error("data page missing project-root section / not-set state")
+	}
+	token := getCSRFCookie(dataRec.Result().Cookies())
+
+	homeRec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(homeRec, httptest.NewRequest(http.MethodGet, "/", nil))
+	if !strings.Contains(homeRec.Body.String(), "DaVinci project root") {
+		t.Error("home page missing the setup nudge when project root is unset")
+	}
+
+	// Save a project root.
+	if rec := postForm(t, s, "/data/project-root", token, url.Values{"project_root": {"/Users/example/Video/Projects"}}); rec.Code != http.StatusSeeOther {
+		t.Fatalf("save project root = %d, want 303", rec.Code)
+	}
+	if v, _ := store.GetSetting(context.Background(), s.db, store.SettingProjectRoot); v != "/Users/example/Video/Projects" {
+		t.Fatalf("stored project root = %q", v)
+	}
+
+	// Now the Data page reflects the stored value and the home nudge is gone.
+	dataRec2 := httptest.NewRecorder()
+	s.Handler().ServeHTTP(dataRec2, httptest.NewRequest(http.MethodGet, "/data", nil))
+	if !strings.Contains(dataRec2.Body.String(), "/Users/example/Video/Projects") {
+		t.Error("data page does not show the saved project root")
+	}
+	homeRec2 := httptest.NewRecorder()
+	s.Handler().ServeHTTP(homeRec2, httptest.NewRequest(http.MethodGet, "/", nil))
+	if strings.Contains(homeRec2.Body.String(), "configure it on the Data page") {
+		t.Error("home nudge should disappear once the project root is set")
+	}
+}
 
 func TestBackupDownload(t *testing.T) {
 	s := newTestServerWithDB(t)

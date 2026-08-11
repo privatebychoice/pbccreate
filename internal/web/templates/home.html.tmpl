@@ -1,6 +1,11 @@
 {{define "content"}}
 <h1>pbccreate</h1>
 <p>Local, privacy-first content-planning tool for creators.</p>
-<p>The web UI is under construction — features arrive slice by slice.</p>
+{{if .ProjectRootUnset}}
+<p class="notice" role="status">
+  Set your <strong>DaVinci project root</strong> to enable Resolve scaffolding —
+  <a href="/data#projectroot-heading">configure it on the Data page →</a>
+</p>
+{{end}}
 <p><a href="/channels">Manage channels →</a></p>
 {{end}}

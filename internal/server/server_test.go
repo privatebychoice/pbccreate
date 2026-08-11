@@ -2,23 +2,17 @@ package server
 
 import (
 	"encoding/json"
-	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"go.privatebychoice.com/pbccreate/internal/config"
 )
 
 func newTestServer(t *testing.T) *Server {
 	t.Helper()
-	s, err := New(&config.Config{Addr: "127.0.0.1:0"}, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
-	if err != nil {
-		t.Fatalf("New: %v", err)
-	}
-	return s
+	// A migrated DB is attached: the landing page (and other shared pages) now
+	// read app settings, so a nil DB is no longer a valid server.
+	return newTestServerWithDB(t)
 }
 
 func TestVersionEndpoint(t *testing.T) {

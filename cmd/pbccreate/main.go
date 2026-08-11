@@ -78,6 +78,13 @@ func runServe(log *slog.Logger) error {
 		return err
 	}
 
+	// Nudge the operator to configure the DaVinci project root if neither the
+	// environment nor the stored setting provides one (needed for scaffolding).
+	if _, source, err := store.ResolveProjectRoot(ctx, db, cfg.ProjectRoot); err == nil && source == store.ProjectRootUnset {
+		log.Warn("DaVinci project root not configured — set it on the Data page to enable Resolve scaffolding",
+			"data_page", "http://"+cfg.Addr+"/data")
+	}
+
 	srv, err := server.New(cfg, db, log)
 	if err != nil {
 		return err
@@ -105,12 +112,27 @@ func runScaffold(log *slog.Logger, args []string) error {
 		return err
 	}
 
+	ctx := context.Background()
+	dbPath := filepath.Join(cfg.DataDir, "pbccreate.db")
+	db, err := store.Open(ctx, dbPath, log)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = db.Close() }()
+	if _, err := store.Migrate(ctx, db, store.MigrationsFS(), log); err != nil {
+		return err
+	}
+
+	// Base precedence: -root flag, else env PBCCREATE_PROJECT_ROOT, else the
+	// stored Data-page setting.
 	base := *root
 	if base == "" {
-		base = cfg.ProjectRoot
+		if base, _, err = store.ResolveProjectRoot(ctx, db, cfg.ProjectRoot); err != nil {
+			return err
+		}
 	}
 	if base == "" {
-		return errors.New("no writable base directory: pass -root or set PBCCREATE_PROJECT_ROOT")
+		return errors.New("no writable base directory: pass -root, set PBCCREATE_PROJECT_ROOT, or set the project root on the Data page")
 	}
 
 	projectName := *name
@@ -118,17 +140,6 @@ func runScaffold(log *slog.Logger, args []string) error {
 	var docFiles map[string]string
 
 	if *itemID > 0 {
-		ctx := context.Background()
-		dbPath := filepath.Join(cfg.DataDir, "pbccreate.db")
-		db, err := store.Open(ctx, dbPath, log)
-		if err != nil {
-			return err
-		}
-		defer func() { _ = db.Close() }()
-		if _, err := store.Migrate(ctx, db, store.MigrationsFS(), log); err != nil {
-			return err
-		}
-
 		item, err := store.GetContentItem(ctx, db, *itemID)
 		if err != nil {
 			return err

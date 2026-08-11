@@ -120,6 +120,7 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /data", s.handleDataPage)
 	mux.HandleFunc("GET /data/backup", s.handleBackupDownload)
 	mux.HandleFunc("POST /data/import", s.handleImportContent)
+	mux.HandleFunc("POST /data/project-root", s.handleProjectRootSave)
 	mux.HandleFunc("GET /content", s.handleContentBoard)
 	mux.HandleFunc("POST /content", s.handleContentCreate)
 	mux.HandleFunc("GET /content/{id}", s.handleContentDetail)

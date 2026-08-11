@@ -1,7 +1,34 @@
 {{define "content"}}
-<h1>Data <span class="muted">(backup &amp; import)</span></h1>
+<h1>Data <span class="muted">(settings, backup &amp; import)</span></h1>
 
 {{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+{{if .Notice}}<p class="notice" role="status">{{.Notice}}</p>{{end}}
+
+<section aria-labelledby="projectroot-heading">
+  <h2 id="projectroot-heading">DaVinci project root</h2>
+  <p class="muted">
+    The base folder that holds your scaffolded Resolve project folders — one
+    subfolder is created per video. This is not the app's data directory and not a
+    single Resolve project. Use an absolute path.
+  </p>
+  <p>
+    Currently:
+    {{if .ProjectRootEffective}}<code>{{.ProjectRootEffective}}</code>
+      {{if eq .ProjectRootSource "env"}}<span class="muted">(from PBCCREATE_PROJECT_ROOT — overrides the value below)</span>
+      {{else}}<span class="muted">(stored setting)</span>{{end}}
+    {{else}}<span class="badge-blocked">not set</span> <span class="muted">— scaffolding is disabled until this is set.</span>{{end}}
+  </p>
+  <form method="post" action="/data/project-root" class="stack">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <p>
+      <label for="project_root">Project root path</label>
+      <input id="project_root" name="project_root" value="{{.ProjectRootStored}}" maxlength="1000"
+        autocomplete="off" spellcheck="false" placeholder="/Users/you/Video/Projects">
+    </p>
+    {{if .ProjectRootEnv}}<p class="muted">Note: PBCCREATE_PROJECT_ROOT is set in the environment and takes precedence over this stored value. Clear the env var to use the value here.</p>{{end}}
+    <p><button type="submit">Save project root</button> <span class="muted">Leave blank and save to clear.</span></p>
+  </form>
+</section>
 
 <section aria-labelledby="backup-heading">
   <h2 id="backup-heading">Backup</h2>
