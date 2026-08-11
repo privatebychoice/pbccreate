@@ -4,11 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	"go.privatebychoice.com/pbccreate/internal/buildinfo"
 	"go.privatebychoice.com/pbccreate/internal/media"
+	"go.privatebychoice.com/pbccreate/internal/resolve"
 	"go.privatebychoice.com/pbccreate/internal/store"
 )
 
@@ -437,6 +439,21 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		Publications: publications,
 	})
 
+	// DaVinci Resolve scaffolding (§8.1): the effective project root, the folder
+	// this item would scaffold to, scripting availability, and a result notice.
+	projectRoot, _, err := store.ResolveProjectRoot(r.Context(), s.db, s.cfg.ProjectRoot)
+	if err != nil {
+		s.log.Error("resolve project root", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	scaffoldTarget := ""
+	if projectRoot != "" {
+		scaffoldTarget = filepath.Join(projectRoot, resolve.SanitizeProjectName(item.Title))
+	}
+	scripting := resolve.New(s.cfg.Python).Scripting()
+	scaffoldNotice := scaffoldResultNotice(r.URL.Query().Get("scaffold"))
+
 	data := map[string]any{
 		"Title":               item.Title,
 		"Build":               buildinfo.Build,
@@ -462,6 +479,11 @@ func (s *Server) handleContentDetail(w http.ResponseWriter, r *http.Request) {
 		"ProbeAvailable":      media.ProbeAvailable(s.cfg.FFprobe),
 		"ThumbAvailable":      media.ThumbAvailable(s.cfg.FFmpeg),
 		"Notice":              notice,
+		"ProjectRootSet":      projectRoot != "",
+		"ScaffoldTarget":      scaffoldTarget,
+		"ScaffoldNotice":      scaffoldNotice,
+		"ScriptingAvailable":  scripting.Available,
+		"ScriptingReason":     scripting.Reason,
 		"Description":         desc,
 		"DescriptionRendered": desc.Render(),
 		"Thumbnails":          thumbs,

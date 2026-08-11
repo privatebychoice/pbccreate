@@ -18,6 +18,7 @@ import (
 	"go.privatebychoice.com/pbccreate/internal/buildinfo"
 	"go.privatebychoice.com/pbccreate/internal/config"
 	"go.privatebychoice.com/pbccreate/internal/resolve"
+	"go.privatebychoice.com/pbccreate/internal/scaffold"
 	"go.privatebychoice.com/pbccreate/internal/server"
 	"go.privatebychoice.com/pbccreate/internal/store"
 )
@@ -149,7 +150,7 @@ func runScaffold(log *slog.Logger, args []string) error {
 			projectName = item.Title
 		}
 		if *docs {
-			docFiles, err = buildScaffoldDocs(ctx, db, item)
+			docFiles, err = scaffold.Docs(ctx, db, item)
 			if err != nil {
 				return err
 			}
@@ -188,59 +189,6 @@ func runScaffold(log *slog.Logger, args []string) error {
 		fmt.Println("\nResolve scripting unavailable: " + st.Reason)
 	}
 	return nil
-}
-
-// buildScaffoldDocs renders the item's script and shot list into Markdown files
-// for the scaffolded Docs folder. Empty sections are skipped.
-func buildScaffoldDocs(ctx context.Context, db *sql.DB, item store.ContentItem) (map[string]string, error) {
-	docs := map[string]string{}
-
-	sc, err := store.GetScript(ctx, db, item.ID)
-	if err != nil {
-		return nil, err
-	}
-	if strings.TrimSpace(sc.Body) != "" {
-		docs["script.md"] = "# " + item.Title + " — Script\n\n" + strings.TrimSpace(sc.Body) + "\n"
-	}
-
-	shots, err := store.ListShots(ctx, db, item.ID)
-	if err != nil {
-		return nil, err
-	}
-	if len(shots) > 0 {
-		docs["shotlist.md"] = renderShotListMarkdown(item, shots)
-	}
-
-	return docs, nil
-}
-
-// renderShotListMarkdown formats a shot list as a numbered Markdown document.
-func renderShotListMarkdown(item store.ContentItem, shots []store.Shot) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "# %s — Shot list\n\n", item.Title)
-	for _, s := range shots {
-		fmt.Fprintf(&b, "%d. %s\n", s.Position, s.Description)
-		if meta := shotMeta(s); meta != "" {
-			fmt.Fprintf(&b, "   - %s\n", meta)
-		}
-		if strings.TrimSpace(s.Notes) != "" {
-			fmt.Fprintf(&b, "   - Notes: %s\n", strings.TrimSpace(s.Notes))
-		}
-	}
-	return b.String()
-}
-
-// shotMeta joins the non-empty scene/framing/camera fields of a shot.
-func shotMeta(s store.Shot) string {
-	var parts []string
-	for _, p := range []struct{ label, val string }{
-		{"Scene", s.Scene}, {"Framing", s.Framing}, {"Camera", s.Camera},
-	} {
-		if v := strings.TrimSpace(p.val); v != "" {
-			parts = append(parts, p.label+": "+v)
-		}
-	}
-	return strings.Join(parts, " · ")
 }
 
 // runScript drives a running DaVinci Resolve Studio instance via the Python

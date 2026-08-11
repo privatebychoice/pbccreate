@@ -138,6 +138,7 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("POST /content/{id}/outline/{segID}/update", s.handleOutlineUpdate)
 	mux.HandleFunc("POST /content/{id}/outline/{segID}/delete", s.handleOutlineDelete)
 	mux.HandleFunc("POST /content/{id}/outline/{segID}/move", s.handleOutlineMove)
+	mux.HandleFunc("POST /content/{id}/scaffold", s.handleContentScaffold)
 	mux.HandleFunc("POST /content/{id}/shots", s.handleShotAdd)
 	mux.HandleFunc("POST /content/{id}/shots/{shotID}/update", s.handleShotUpdate)
 	mux.HandleFunc("POST /content/{id}/shots/{shotID}/status", s.handleShotStatus)

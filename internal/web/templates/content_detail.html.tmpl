@@ -430,6 +430,22 @@
   </form>
 </section>
 
+<section aria-labelledby="resolve-heading" data-tab="media">
+  <h2 id="resolve-heading">DaVinci Resolve <span class="muted">(project scaffolding)</span></h2>
+  {{if .ProjectRootSet}}
+  <p class="muted">Create the on-disk project folder tree (per-mode footage bins, plus a Docs folder holding the script and shot list). No Resolve required.</p>
+  <p>Scaffolds to <code>{{.ScaffoldTarget}}</code></p>
+  {{if .ScaffoldNotice}}<p class="notice" role="status">{{.ScaffoldNotice}}</p>{{end}}
+  <form method="post" action="/content/{{.Item.ID}}/scaffold" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <button type="submit">Scaffold project folders</button>
+  </form>
+  {{else}}
+  <p class="notice" role="status">No project root set — <a href="/data#projectroot-heading">configure it on the Data page</a> to enable scaffolding.</p>
+  {{end}}
+  <p class="muted">Scripting: {{if .ScriptingAvailable}}prerequisites detected — use <code>pbccreate script</code> to drive Resolve Studio.{{else}}{{.ScriptingReason}}{{end}}</p>
+</section>
+
 <section aria-labelledby="gear-heading" data-tab="media">
   <h2 id="gear-heading">Gear <span class="muted">(setup used)</span></h2>
   {{if .ItemGear}}
