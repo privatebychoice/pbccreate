@@ -12,6 +12,55 @@ import (
 	"go.privatebychoice.com/pbccreate/internal/store"
 )
 
+func TestIdeaPillarLinkAndCarryOnPromote(t *testing.T) {
+	s := newTestServerWithDB(t)
+	ctx := context.Background()
+	ch, _ := store.CreateChannel(ctx, s.db, "TUL", "youtube")
+	pillar, _ := store.CreatePillar(ctx, s.db, ch.ID, "Privacy", "theme")
+	idea, _ := store.CreateIdea(ctx, s.db, store.Idea{ChannelID: ch.ID, Title: "VPN guide"})
+	ideaPath := "/ideas/" + strconv.FormatInt(idea.ID, 10)
+
+	getRec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(getRec, httptest.NewRequest(http.MethodGet, ideaPath, nil))
+	token := getCSRFCookie(getRec.Result().Cookies())
+	// The detail page offers the channel's pillar in a select.
+	if !strings.Contains(getRec.Body.String(), `name="pillar_id"`) || !strings.Contains(getRec.Body.String(), "Privacy") {
+		t.Error("idea detail missing pillar select / option")
+	}
+
+	// Assign the pillar via the edit form.
+	if rec := postForm(t, s, ideaPath, token, url.Values{
+		"title":     {"VPN guide"},
+		"pillar_id": {strconv.FormatInt(pillar.ID, 10)},
+	}); rec.Code != http.StatusSeeOther {
+		t.Fatalf("update idea = %d, want 303", rec.Code)
+	}
+	if got, _ := store.GetIdea(ctx, s.db, idea.ID); got.PillarID != pillar.ID {
+		t.Fatalf("pillar not linked: %+v", got)
+	}
+
+	// A pillar from another channel is a 400.
+	other, _ := store.CreateChannel(ctx, s.db, "PBC", "youtube")
+	foreign, _ := store.CreatePillar(ctx, s.db, other.ID, "Foreign", "")
+	if rec := postForm(t, s, ideaPath, token, url.Values{
+		"title":     {"VPN guide"},
+		"pillar_id": {strconv.FormatInt(foreign.ID, 10)},
+	}); rec.Code != http.StatusBadRequest {
+		t.Fatalf("foreign pillar = %d, want 400", rec.Code)
+	}
+
+	// Promote carries the pillar onto the new content item.
+	promo := postForm(t, s, ideaPath+"/promote", token, url.Values{"type": {"video"}})
+	if promo.Code != http.StatusSeeOther {
+		t.Fatalf("promote = %d, want 303", promo.Code)
+	}
+	itemID, _ := strconv.ParseInt(strings.TrimPrefix(promo.Header().Get("Location"), "/content/"), 10, 64)
+	pillars, _ := store.ListPillarsForItem(ctx, s.db, itemID)
+	if len(pillars) != 1 || pillars[0].ID != pillar.ID {
+		t.Fatalf("promoted item pillars = %+v, want [Privacy]", pillars)
+	}
+}
+
 func TestIdeaCreatePromoteFlow(t *testing.T) {
 	s := newTestServerWithDB(t)
 	ctx := context.Background()

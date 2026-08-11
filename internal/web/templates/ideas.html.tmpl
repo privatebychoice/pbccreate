@@ -48,7 +48,7 @@
 {{if .Ideas}}
 <table>
   <thead>
-    <tr><th scope="col">Score</th><th scope="col">Title</th><th scope="col">Channel</th><th scope="col">ICE</th><th scope="col">Status</th></tr>
+    <tr><th scope="col">Score</th><th scope="col">Title</th><th scope="col">Channel</th><th scope="col">Pillar</th><th scope="col">ICE</th><th scope="col">Status</th></tr>
   </thead>
   <tbody>
     {{range .Ideas}}
@@ -57,6 +57,7 @@
       <td><a href="/ideas/{{.ID}}">{{.Title}}</a>
         {{if .PromotedContentItemID}} <a class="badge-sponsor" href="/content/{{.PromotedContentItemID}}">promoted</a>{{end}}</td>
       <td>{{.ChannelName}}</td>
+      <td>{{if .PillarName}}{{.PillarName}}{{else}}<span class="muted">—</span>{{end}}</td>
       <td class="muted">{{.Impact}}/{{.Confidence}}/{{.Effort}}</td>
       <td>{{humanize .Status}}</td>
     </tr>

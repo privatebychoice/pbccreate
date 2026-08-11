@@ -24,6 +24,8 @@ func (s *Server) handleIdeaCreate(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/ideas", http.StatusSeeOther)
 	case errors.Is(err, store.ErrInvalidIdea):
 		s.renderIdeas(w, r, http.StatusBadRequest, "A channel and a title are required.")
+	case errors.Is(err, store.ErrPillarNotFound):
+		s.renderIdeas(w, r, http.StatusBadRequest, "That pillar is not in the selected channel.")
 	default:
 		s.log.Error("create idea", "err", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
@@ -50,6 +52,8 @@ func (s *Server) handleIdeaUpdate(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/ideas/"+strconv.FormatInt(id, 10), http.StatusSeeOther)
 	case errors.Is(err, store.ErrInvalidIdea):
 		s.renderIdeaDetail(w, r, id, http.StatusBadRequest, "A title is required.")
+	case errors.Is(err, store.ErrPillarNotFound):
+		s.renderIdeaDetail(w, r, id, http.StatusBadRequest, "That pillar is not in this idea's channel.")
 	case errors.Is(err, store.ErrIdeaNotFound):
 		http.NotFound(w, r)
 	default:
@@ -105,6 +109,12 @@ func (s *Server) handleIdeaPromote(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+	// Carry the idea's pillar onto the new content item so the theme follows it.
+	if idea.PillarID != 0 {
+		if err := store.AssignPillar(r.Context(), s.db, item.ID, idea.PillarID); err != nil {
+			s.log.Warn("promote idea: assign pillar", "err", err, "idea", id, "pillar", idea.PillarID)
+		}
+	}
 	http.Redirect(w, r, "/content/"+strconv.FormatInt(item.ID, 10), http.StatusSeeOther)
 }
 
@@ -149,6 +159,12 @@ func (s *Server) renderIdeaDetail(w http.ResponseWriter, r *http.Request, id int
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+	pillars, err := store.ListPillarsForChannel(r.Context(), s.db, idea.ChannelID)
+	if err != nil {
+		s.log.Error("list pillars for idea", "err", err, "id", id)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
 	data := map[string]any{
 		"Title":     "Idea: " + idea.Title,
 		"Build":     buildinfo.Build,
@@ -157,6 +173,7 @@ func (s *Server) renderIdeaDetail(w http.ResponseWriter, r *http.Request, id int
 		"Statuses":  store.IdeaStatuses,
 		"Types":     store.ContentTypes,
 		"Modes":     store.CreatorModes,
+		"Pillars":   pillars,
 		"Error":     errMsg,
 	}
 	if err := s.tmpl.render(w, status, "idea_detail.html.tmpl", data); err != nil {
@@ -180,5 +197,6 @@ func ideaFromForm(r *http.Request, id int64) store.Idea {
 		Confidence: confidence,
 		Effort:     effort,
 		Status:     r.PostFormValue("status"),
+		PillarID:   formID(r, "pillar_id"),
 	}
 }

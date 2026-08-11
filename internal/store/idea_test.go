@@ -5,6 +5,57 @@ import (
 	"testing"
 )
 
+func TestIdeaPillarLink(t *testing.T) {
+	ctx := context.Background()
+	db := migratedTestDB(t)
+	ch, _ := CreateChannel(ctx, db, "TUL", "youtube")
+	pillar, _ := CreatePillar(ctx, db, ch.ID, "Privacy", "theme")
+
+	// Create linked to a pillar; the link + name round-trip.
+	idea, err := CreateIdea(ctx, db, Idea{ChannelID: ch.ID, Title: "VPN guide", PillarID: pillar.ID})
+	if err != nil {
+		t.Fatalf("CreateIdea linked: %v", err)
+	}
+	got, _ := GetIdea(ctx, db, idea.ID)
+	if got.PillarID != pillar.ID || got.PillarName != "Privacy" {
+		t.Fatalf("linked idea = %+v", got)
+	}
+
+	// A pillar from another channel is rejected.
+	other, _ := CreateChannel(ctx, db, "PBC", "youtube")
+	otherPillar, _ := CreatePillar(ctx, db, other.ID, "Foreign", "")
+	if _, err := CreateIdea(ctx, db, Idea{ChannelID: ch.ID, Title: "x", PillarID: otherPillar.ID}); err != ErrPillarNotFound {
+		t.Errorf("cross-channel pillar err = %v, want ErrPillarNotFound", err)
+	}
+
+	// Update relinks, rejects a foreign pillar, and unlinks on 0.
+	pillar2, _ := CreatePillar(ctx, db, ch.ID, "Homesteading", "")
+	if err := UpdateIdea(ctx, db, Idea{ID: idea.ID, Title: "VPN guide", PillarID: pillar2.ID}); err != nil {
+		t.Fatalf("UpdateIdea relink: %v", err)
+	}
+	if got, _ := GetIdea(ctx, db, idea.ID); got.PillarID != pillar2.ID {
+		t.Errorf("relink pillar = %d, want %d", got.PillarID, pillar2.ID)
+	}
+	if err := UpdateIdea(ctx, db, Idea{ID: idea.ID, Title: "VPN guide", PillarID: otherPillar.ID}); err != ErrPillarNotFound {
+		t.Errorf("update foreign pillar err = %v, want ErrPillarNotFound", err)
+	}
+	if err := UpdateIdea(ctx, db, Idea{ID: idea.ID, Title: "VPN guide", PillarID: 0}); err != nil {
+		t.Fatalf("UpdateIdea unlink: %v", err)
+	}
+	if got, _ := GetIdea(ctx, db, idea.ID); got.PillarID != 0 {
+		t.Errorf("expected unlinked, got %d", got.PillarID)
+	}
+
+	// Deleting a linked pillar unlinks the idea (ON DELETE SET NULL), not deletes.
+	relinked, _ := CreateIdea(ctx, db, Idea{ChannelID: ch.ID, Title: "keep me", PillarID: pillar2.ID})
+	if err := DeletePillar(ctx, db, pillar2.ID); err != nil {
+		t.Fatalf("DeletePillar: %v", err)
+	}
+	if got, _ := GetIdea(ctx, db, relinked.ID); got.PillarID != 0 {
+		t.Errorf("idea should survive pillar delete unlinked, got pillar %d", got.PillarID)
+	}
+}
+
 func TestIdeaCRUDScoreAndPromote(t *testing.T) {
 	ctx := context.Background()
 	db := migratedTestDB(t)

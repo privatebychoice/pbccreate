@@ -34,8 +34,12 @@ type Idea struct {
 	Effort                int
 	Status                string
 	PromotedContentItemID int64
-	CreatedAt             time.Time
-	UpdatedAt             time.Time
+	// PillarID links the idea to a content pillar ("theme"); 0 = unlinked. It
+	// must belong to the idea's channel. PillarName is populated for display.
+	PillarID   int64
+	PillarName string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 // Score is the computed ICE-style priority: impact*confidence/effort. It is 0
@@ -71,7 +75,13 @@ func normIdeaStatus(s string) string {
 
 const ideaColumns = `i.id, i.channel_id, COALESCE(c.name, ''), i.title, i.note, i.source,
 	i.ice_impact, i.ice_confidence, i.ice_effort, i.status, i.promoted_content_item_id,
-	i.created_at, i.updated_at`
+	i.created_at, i.updated_at, i.pillar_id, COALESCE(p.name, '')`
+
+// ideaFrom is the FROM/JOIN clause shared by idea queries: channel name and the
+// optional linked pillar name.
+const ideaFrom = ` FROM ideas i
+	LEFT JOIN channels c ON c.id = i.channel_id
+	LEFT JOIN pillars p ON p.id = i.pillar_id`
 
 // CreateIdea inserts an idea (title required) and returns it.
 func CreateIdea(ctx context.Context, db *sql.DB, idea Idea) (Idea, error) {
@@ -80,13 +90,17 @@ func CreateIdea(ctx context.Context, db *sql.DB, idea Idea) (Idea, error) {
 		return Idea{}, ErrInvalidIdea
 	}
 	idea.Status = normIdeaStatus(idea.Status)
+	if err := checkIdeaPillar(ctx, db, idea.PillarID, idea.ChannelID); err != nil {
+		return Idea{}, err
+	}
 	now := time.Now().UTC().Truncate(time.Second)
 	ts := now.Format(time.RFC3339)
 	res, err := db.ExecContext(ctx, `
-		INSERT INTO ideas (channel_id, title, note, source, ice_impact, ice_confidence, ice_effort, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO ideas (channel_id, title, note, source, ice_impact, ice_confidence, ice_effort, status, pillar_id, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		idea.ChannelID, idea.Title, strings.TrimSpace(idea.Note), strings.TrimSpace(idea.Source),
-		clampFactor(idea.Impact), clampFactor(idea.Confidence), clampFactor(idea.Effort), idea.Status, ts, ts)
+		clampFactor(idea.Impact), clampFactor(idea.Confidence), clampFactor(idea.Effort), idea.Status,
+		nullableID(idea.PillarID), ts, ts)
 	if err != nil {
 		return Idea{}, fmt.Errorf("insert idea: %w", err)
 	}
@@ -100,8 +114,7 @@ func CreateIdea(ctx context.Context, db *sql.DB, idea Idea) (Idea, error) {
 // ListIdeas returns all ideas with their channel name, highest ICE score first,
 // then newest.
 func ListIdeas(ctx context.Context, db *sql.DB) ([]Idea, error) {
-	rows, err := db.QueryContext(ctx,
-		`SELECT `+ideaColumns+` FROM ideas i LEFT JOIN channels c ON c.id = i.channel_id`)
+	rows, err := db.QueryContext(ctx, `SELECT `+ideaColumns+ideaFrom)
 	if err != nil {
 		return nil, fmt.Errorf("query ideas: %w", err)
 	}
@@ -135,7 +148,7 @@ func ListIdeas(ctx context.Context, db *sql.DB) ([]Idea, error) {
 // GetIdea returns one idea with its channel name, or ErrIdeaNotFound.
 func GetIdea(ctx context.Context, db *sql.DB, id int64) (Idea, error) {
 	idea, err := scanIdea(db.QueryRowContext(ctx,
-		`SELECT `+ideaColumns+` FROM ideas i LEFT JOIN channels c ON c.id = i.channel_id WHERE i.id = ?`, id))
+		`SELECT `+ideaColumns+ideaFrom+` WHERE i.id = ?`, id))
 	if errors.Is(err, sql.ErrNoRows) {
 		return Idea{}, ErrIdeaNotFound
 	}
@@ -153,17 +166,51 @@ func UpdateIdea(ctx context.Context, db *sql.DB, idea Idea) error {
 		return ErrInvalidIdea
 	}
 	idea.Status = normIdeaStatus(idea.Status)
+	// The pillar must belong to the idea's (fixed) channel; look it up rather than
+	// trusting a form-supplied channel.
+	if idea.PillarID != 0 {
+		var chID int64
+		err := db.QueryRowContext(ctx, `SELECT channel_id FROM ideas WHERE id = ?`, idea.ID).Scan(&chID)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrIdeaNotFound
+		}
+		if err != nil {
+			return fmt.Errorf("update idea: lookup channel: %w", err)
+		}
+		if err := checkIdeaPillar(ctx, db, idea.PillarID, chID); err != nil {
+			return err
+		}
+	}
 	ts := time.Now().UTC().Truncate(time.Second).Format(time.RFC3339)
 	res, err := db.ExecContext(ctx, `
 		UPDATE ideas SET
-			title = ?, note = ?, source = ?, ice_impact = ?, ice_confidence = ?, ice_effort = ?, status = ?, updated_at = ?
+			title = ?, note = ?, source = ?, ice_impact = ?, ice_confidence = ?, ice_effort = ?, status = ?, pillar_id = ?, updated_at = ?
 		WHERE id = ?`,
 		idea.Title, strings.TrimSpace(idea.Note), strings.TrimSpace(idea.Source),
-		clampFactor(idea.Impact), clampFactor(idea.Confidence), clampFactor(idea.Effort), idea.Status, ts, idea.ID)
+		clampFactor(idea.Impact), clampFactor(idea.Confidence), clampFactor(idea.Effort), idea.Status,
+		nullableID(idea.PillarID), ts, idea.ID)
 	if err != nil {
 		return fmt.Errorf("update idea: %w", err)
 	}
 	return checkAffected(res, ErrIdeaNotFound)
+}
+
+// checkIdeaPillar verifies a non-zero pillar link points at a pillar owned by the
+// idea's channel; a zero link is always valid (unlinked).
+func checkIdeaPillar(ctx context.Context, db *sql.DB, pillarID, channelID int64) error {
+	if pillarID == 0 {
+		return nil
+	}
+	var n int
+	if err := db.QueryRowContext(ctx,
+		`SELECT COUNT(1) FROM pillars WHERE id = ? AND channel_id = ?`,
+		pillarID, channelID).Scan(&n); err != nil {
+		return fmt.Errorf("check idea pillar: %w", err)
+	}
+	if n == 0 {
+		return ErrPillarNotFound
+	}
+	return nil
 }
 
 // MarkIdeaPromoted links an idea to the ContentItem it became and sets its status
@@ -192,15 +239,18 @@ func scanIdea(sc rowScanner) (Idea, error) {
 	var (
 		idea         Idea
 		promoted     sql.NullInt64
+		pillar       sql.NullInt64
 		created, upd string
 	)
 	if err := sc.Scan(&idea.ID, &idea.ChannelID, &idea.ChannelName, &idea.Title, &idea.Note, &idea.Source,
-		&idea.Impact, &idea.Confidence, &idea.Effort, &idea.Status, &promoted, &created, &upd); err != nil {
+		&idea.Impact, &idea.Confidence, &idea.Effort, &idea.Status, &promoted, &created, &upd,
+		&pillar, &idea.PillarName); err != nil {
 		return Idea{}, err
 	}
 	if promoted.Valid {
 		idea.PromotedContentItemID = promoted.Int64
 	}
+	idea.PillarID = pillar.Int64
 	idea.CreatedAt = parseTS(created)
 	idea.UpdatedAt = parseTS(upd)
 	return idea, nil

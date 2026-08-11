@@ -3,6 +3,7 @@
 
 <h1>{{.Idea.Title}}</h1>
 <p class="muted">{{.Idea.ChannelName}} · score {{if gt .Idea.Score 0.0}}{{printf "%.1f" .Idea.Score}}{{else}}unscored{{end}}
+  {{if .Idea.PillarID}} · pillar: <a href="/pillars/{{.Idea.PillarID}}">{{.Idea.PillarName}}</a>{{end}}
   {{if .Idea.PromotedContentItemID}} · <a href="/content/{{.Idea.PromotedContentItemID}}">promoted to a content item →</a>{{end}}</p>
 
 {{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
@@ -40,6 +41,14 @@
     <select id="status" name="status">
       {{range .Statuses}}<option value="{{.}}"{{if eq . $.Idea.Status}} selected{{end}}>{{humanize .}}</option>{{end}}
     </select>
+  </p>
+  <p>
+    <label for="pillar_id">Pillar <span class="muted">(content theme)</span></label>
+    <select id="pillar_id" name="pillar_id">
+      <option value="">— none —</option>
+      {{range .Pillars}}<option value="{{.ID}}"{{if eq .ID $.Idea.PillarID}} selected{{end}}>{{.Name}}</option>{{end}}
+    </select>
+    {{if not .Pillars}}<span class="muted">No pillars for this channel yet — <a href="/pillars">define some</a>.</span>{{end}}
   </p>
   <p><button type="submit">Save idea</button></p>
 </form>
