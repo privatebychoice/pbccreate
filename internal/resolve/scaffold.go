@@ -49,9 +49,21 @@ func (FSScaffolder) Scaffold(spec ScaffoldSpec) (Result, error) {
 	if base == "" || base == "." {
 		return Result{}, errors.New("scaffold: base directory is required")
 	}
+	// Require an absolute base so folders are never created relative to the
+	// process working directory (the project root is operator-configured).
+	if !filepath.IsAbs(base) {
+		return Result{}, fmt.Errorf("scaffold: base directory %q must be absolute", base)
+	}
 
 	root, err := projectRoot(base, spec.ProjectName)
 	if err != nil {
+		return Result{}, err
+	}
+	// Refuse to scaffold into a pre-existing symlink or non-directory at the
+	// project root: os.MkdirAll follows symlinks, so a planted symlink here could
+	// otherwise redirect writes outside the base. (The base itself is trusted;
+	// this guards the one attacker-influenced path segment.)
+	if err := ensureRealDir(root); err != nil {
 		return Result{}, err
 	}
 	if err := os.MkdirAll(root, 0o755); err != nil {
@@ -107,6 +119,26 @@ func createFolder(root, relParent string, f Folder, dirs *[]string) error {
 		if err := createFolder(root, rel, c, dirs); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// ensureRealDir errors if path exists but is a symlink or a non-directory. A
+// non-existent path is fine (it will be created). This blocks scaffolding into a
+// planted symlink, which os.MkdirAll would otherwise follow out of the base.
+func ensureRealDir(path string) error {
+	fi, err := os.Lstat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("scaffold: inspect project path: %w", err)
+	}
+	if fi.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("scaffold: project path %q is a symlink; refusing to write through it", path)
+	}
+	if !fi.IsDir() {
+		return fmt.Errorf("scaffold: project path %q exists and is not a directory", path)
 	}
 	return nil
 }

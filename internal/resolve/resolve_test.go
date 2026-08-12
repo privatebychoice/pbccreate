@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -137,6 +138,53 @@ func TestScaffoldConfinesToBase(t *testing.T) {
 	// An empty base is rejected.
 	if _, err := (FSScaffolder{}).Scaffold(ScaffoldSpec{Base: "", ProjectName: "x"}); err == nil {
 		t.Error("expected error for empty base")
+	}
+}
+
+func TestScaffoldNeutralizesAdversarialTitles(t *testing.T) {
+	base := t.TempDir()
+	titles := []string{
+		"../../etc/cron.d/evil", "/etc/passwd", "foo/../../bar",
+		`..\..\Windows\System32`, "C:\\Windows", "a\x00b", "~/secrets",
+		"..", "   ...   ", "....//....//etc", "Café 日本 🎬", "My Video (2026)!",
+	}
+	for _, title := range titles {
+		res, err := FSScaffolder{}.Scaffold(ScaffoldSpec{Base: base, ProjectName: title, Template: DefaultTemplate("")})
+		if err != nil {
+			continue // titles that sanitize to nothing are rejected — acceptable
+		}
+		rel, relErr := filepath.Rel(base, res.ProjectRoot)
+		if relErr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+			t.Errorf("title %q escaped base: root=%q rel=%q", title, res.ProjectRoot, rel)
+		}
+		// The project root must be a single path component under base.
+		if strings.ContainsRune(rel, filepath.Separator) {
+			t.Errorf("title %q produced a multi-segment path %q", title, rel)
+		}
+	}
+}
+
+func TestScaffoldRequiresAbsoluteBase(t *testing.T) {
+	if _, err := (FSScaffolder{}).Scaffold(ScaffoldSpec{Base: "relative/dir", ProjectName: "P"}); err == nil {
+		t.Error("expected error for a relative base directory")
+	}
+}
+
+func TestScaffoldRefusesSymlinkRoot(t *testing.T) {
+	base := t.TempDir()
+	outside := t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(base, "Evil")); err != nil {
+		t.Skipf("symlinks unsupported here: %v", err)
+	}
+
+	// "Evil" sanitizes to "Evil", which is the planted symlink — scaffolding must
+	// refuse rather than write through it into `outside`.
+	_, err := (FSScaffolder{}).Scaffold(ScaffoldSpec{Base: base, ProjectName: "Evil", Template: DefaultTemplate("")})
+	if err == nil || !strings.Contains(err.Error(), "symlink") {
+		t.Fatalf("expected a symlink refusal, got %v", err)
+	}
+	if entries, _ := os.ReadDir(outside); len(entries) != 0 {
+		t.Errorf("scaffold wrote through the symlink into %s: %v", outside, entries)
 	}
 }
 

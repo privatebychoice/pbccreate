@@ -5,6 +5,7 @@ tag time. Newest first.
 
 | Tag | Description |
 | --- | --- |
+| v1.2.1 | Harden DaVinci project-folder scaffolding path safety: require an absolute base directory and refuse to scaffold into a symlinked or non-directory project root. (Project names were already confined to a single sanitized path segment.) |
 | v1.2.0 | Link an idea to a content pillar (carried onto the item on promote); configure the DaVinci project root via `PBCCREATE_PROJECT_ROOT` or the Data page, with a launch-time setup nudge; scaffold Resolve project folders from the content editor. Migrations 0033–0034. |
 | v1.1.2 | Each outline beat lists its linked shots as in-page jump-links back to the shot list. |
 | v1.1.1 | Organize the content editor into five accessible stage tabs (Plan, Media, Metadata, Rights, Release), remembering the active tab across reloads. |
